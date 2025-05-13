@@ -8,6 +8,7 @@ import datetime
 from typing import Tuple, Optional
 
 
+from app.core.ai.speech.speech_service import AISpeechService
 from app.core.config.settings import settings
 
 logger = logging.getLogger(__name__)

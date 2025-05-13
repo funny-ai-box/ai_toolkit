@@ -131,6 +131,10 @@ class Settings(BaseSettings):
     AZURE_STORAGE_CDN_DOMAIN: Optional[str] = None
 
 
+    # --- 其他设置 ---
+    SPEECH_SERVICE_TYPE: Optional[str] = None
+
+
     # Pydantic-Settings 配置
     model_config = SettingsConfigDict(
         env_file=ENV_FILE_PATH, # 指定 .env 文件路径

@@ -10,6 +10,7 @@ from typing import Optional, Any, TYPE_CHECKING # <--- 导入 TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ai.speech.speech_service import AISpeechService
 from app.core.database.session import get_db
 from app.core.config.settings import settings
 from app.core.auth.jwt_service import TokenPayload # TokenPayload 还是需要的
@@ -107,9 +108,13 @@ def get_storage_service_from_state(request: Request) -> Optional['IStorageServic
     storage_service = getattr(request.app.state, 'storage_service', None)
     return storage_service
 
-def get_speech_service_from_state(request: Request) -> Optional[Any]: # Change type hint
+def get_speech_service_from_state(request: Request) -> Optional['AISpeechService']: # 更新类型提示
     """依赖项：从 app.state 获取 speech_service 实例 (可能为 None)"""
     speech_service = getattr(request.app.state, 'speech_service', None)
+    if TYPE_CHECKING:
+        from app.core.ai.speech.speech_service import AISpeechService
+        if speech_service is not None:
+            assert isinstance(speech_service, AISpeechService)
     return speech_service
 
 # # --- 仓库依赖项  ---

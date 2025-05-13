@@ -26,6 +26,8 @@ from app.core.ai.vector.user_docs_milvus_service import UserDocsMilvusService
 from app.core.ai.chat.factory import get_chat_ai_service
 from app.core.storage.factory import get_storage_service # Storage 使用工厂获取
 from app.core.auth.jwt_service import JwtService # JWT 服务也需要 Redis
+from app.core.ai.speech.factory import get_speech_service # 导入语音服务工厂
+
 
 # --- 导入 APScheduler 启动/关闭函数 ---
 from app.core.scheduler import start_scheduler, stop_scheduler
@@ -145,6 +147,13 @@ async def lifespan(app: FastAPI):
         if app.state.storage_service: logger.info("Storage Service 已存入 app.state")
         else: logger.info("未配置 Storage Service。")
     except Exception as e: logger.error(f"初始化 Storage Service 失败: {e}", exc_info=True)
+
+    try:
+        logger.info("初始化并存储 Speech Service...")
+        app.state.speech_service = get_speech_service()
+        if app.state.speech_service: logger.info("Speech Service 已存入 app.state")
+        else: logger.info("未配置 Speech Service。")
+    except Exception as e: logger.error(f"初始化 Speech Service 失败: {e}", exc_info=True)
 
     # 2. 启动 APScheduler
     #start_scheduler() # <--- 调用启动函数
