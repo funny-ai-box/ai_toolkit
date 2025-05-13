@@ -1,0 +1,8 @@
+{
+  "survey": {
+    "ai": {
+      "chat_ai_provider_type": "OpenAI",
+      "max_context_messages": 20
+    }
+  }
+}

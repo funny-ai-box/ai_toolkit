@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: FastAPI (AI Toolkit)", // 给你的调试配置起个名字
+            "type": "python",                     // 调试器类型
+            "request": "launch",                  // "launch" 表示启动新进程，"attach" 表示附加到已运行进程
+            "module": "uvicorn",                  // 要运行的模块是 uvicorn
+            "args": [                             // 传递给 uvicorn 模块的参数
+                "app.api.main:app",               // 指向你的 FastAPI 应用实例
+                "--host", "0.0.0.0",              // 指定主机 (同你之前的运行命令)
+                "--port", "57460",                // 指定端口 (同你之前的运行命令)
+                "--reload"                        // 可选：在调试时启用重载，方便修改代码后自动重启调试会话
+                // 如果不需要重载，可以移除 "--reload"
+            ],
+            "jinja": true,                       // 如果你使用 Jinja2 模板（目前看你的 API 项目不需要，但保留无害）
+            "cwd": "${workspaceFolder}",          // **重要**: 确保工作目录是项目根目录 (ai_toolkit_py)
+            "console": "integratedTerminal"       // **推荐**: 在 VS Code 集成终端中显示 uvicorn 的输出和你的 print 语句
+            // "console": "internalConsole" // 或者使用内部调试控制台，但输出可能不如终端清晰
+        }
+    ]
+}

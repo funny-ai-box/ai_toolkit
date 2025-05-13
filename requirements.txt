@@ -1,0 +1,57 @@
+# Web Framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0 # ASGI server
+
+# ORM & Database
+sqlalchemy[asyncio]>=2.0.29
+asyncmy>=0.2.9 # Async MySQL driver (use instead of aiomysql if possible)
+# Or alternatively use aiomysql if asyncmy has issues:
+# aiomysql>=0.2.0
+# mysql-connector-python>=8.0.33 # Sometimes needed by aiomysql
+
+# Data Validation & Settings
+pydantic>=2.6.4
+pydantic-settings>=2.2.1
+python-dotenv>=1.0.1
+
+# Authentication & Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Redis
+redis>=5.0.3 # Includes async support
+
+# AI
+openai>=1.76.0
+
+# HTTP Client
+httpx>=0.27.0
+
+apscheduler>=3.10.0
+
+# WebSocket Support (comes with FastAPI/Starlette)
+
+# --- Added Document Parsing Libraries ---
+python-docx>=1.1.0           # For .docx files
+pdfminer.six>=20221105        # For .pdf files
+beautifulsoup4>=4.12.3        # For HTML parsing
+html5lib>=1.1                # HTML parser used by BeautifulSoup
+
+# Snowflake ID (using a simple implementation for now, or choose a library)
+# No specific library added yet, will implement in utils
+
+# Optional: Code Formatting & Linting
+# black>=24.3.0
+# ruff>=0.3.5
+# mypy>=1.9.0
+
+# Optional: Milvus (for later)
+pymilvus>=2.3.5
+
+# Optional: Storage SDKs (for later)
+oss2>=2.18.4 # Aliyun OSS
+azure-storage-blob>=12.19.0
+azure-identity>=1.15.0
+gevent>=25.4.2
+python-multipart》=0.0.20
+pystache>=0.6.8

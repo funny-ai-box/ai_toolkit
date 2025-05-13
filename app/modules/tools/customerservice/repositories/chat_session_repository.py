@@ -1,0 +1,240 @@
+"""
+聊天会话仓储实现
+"""
+import datetime
+import logging
+import uuid
+from typing import List, Tuple, Optional
+
+from sqlalchemy import select, update, delete, desc
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.utils.snowflake import generate_id
+from app.modules.tools.customerservice.entities import ChatSession, ChatSessionStatus
+
+logger = logging.getLogger(__name__)
+
+
+class ChatSessionRepository:
+    """聊天会话仓储"""
+
+    def __init__(self, db: AsyncSession):
+        """
+        初始化聊天会话仓储
+        
+        Args:
+            db: 数据库会话
+        """
+        self.db = db
+
+    async def get_by_id_async(self, id: int) -> Optional[ChatSession]:
+        """
+        获取聊天会话
+        
+        Args:
+            id: 会话ID
+            
+        Returns:
+            会话实体
+        """
+        try:
+            result = await self.db.execute(
+                select(ChatSession).where(ChatSession.id == id)
+            )
+            return result.scalar_one_or_none()
+        except Exception as ex:
+            logger.error(f"获取聊天会话失败, ID: {id}", exc_info=ex)
+            raise
+
+    async def get_by_session_key_async(self, session_key: str) -> Optional[ChatSession]:
+        """
+        根据会话Key获取会话
+        
+        Args:
+            session_key: 会话Key
+            
+        Returns:
+            会话实体
+        """
+        try:
+            result = await self.db.execute(
+                select(ChatSession).where(ChatSession.session_key == session_key)
+            )
+            return result.scalar_one_or_none()
+        except Exception as ex:
+            logger.error(f"根据会话Key获取会话失败, SessionKey: {session_key}", exc_info=ex)
+            raise
+
+    async def get_user_sessions_async(self, user_id: int, include_ended: bool = False) -> List[ChatSession]:
+        """
+        获取用户的所有会话
+        
+        Args:
+            user_id: 用户ID
+            include_ended: 是否包含已结束的会话
+            
+        Returns:
+            会话列表
+        """
+        try:
+            query = select(ChatSession).where(ChatSession.user_id == user_id)
+            
+            if not include_ended:
+                query = query.where(ChatSession.status == ChatSessionStatus.ACTIVE)
+                
+            query = query.order_by(desc(ChatSession.last_modify_date))
+            
+            result = await self.db.execute(query)
+            return list(result.scalars().all())
+        except Exception as ex:
+            logger.error(f"获取用户会话列表失败, 用户ID: {user_id}", exc_info=ex)
+            raise
+
+    async def get_user_sessions_paginated_async(
+        self, user_id: int, page_index: int = 1, page_size: int = 20, include_ended: bool = True
+    ) -> Tuple[List[ChatSession], int]:
+        """
+        分页获取用户的所有会话
+        
+        Args:
+            user_id: 用户ID
+            page_index: 页码
+            page_size: 每页数量
+            include_ended: 是否包含已结束的会话
+            
+        Returns:
+            会话列表和总数
+        """
+        try:
+            # 确保页码和每页数量有效
+            if page_index < 1:
+                page_index = 1
+            if page_size < 1:
+                page_size = 20
+                
+            # 计算跳过的记录数
+            skip = (page_index - 1) * page_size
+            
+            # 构建查询
+            query = select(ChatSession).where(ChatSession.user_id == user_id)
+            
+            if not include_ended:
+                query = query.where(ChatSession.status == ChatSessionStatus.ACTIVE)
+                
+            # 查询满足条件的记录总数
+            count_query = select(ChatSession.id).where(ChatSession.user_id == user_id)
+            if not include_ended:
+                count_query = count_query.where(ChatSession.status == ChatSessionStatus.ACTIVE)
+                
+            count_result = await self.db.execute(count_query)
+            total_count = len(count_result.all())
+            
+            # 查询分页数据
+            query = query.order_by(desc(ChatSession.last_modify_date)).offset(skip).limit(page_size)
+            
+            result = await self.db.execute(query)
+            items = list(result.scalars().all())
+            
+            return items, total_count
+        except Exception as ex:
+            logger.error(f"分页获取用户会话列表失败, 用户ID: {user_id}", exc_info=ex)
+            raise
+
+    async def create_async(self, session: ChatSession) -> bool:
+        """
+        创建会话
+        
+        Args:
+            session: 会话实体
+            
+        Returns:
+            操作结果
+        """
+        try:
+            session.id = generate_id()
+            session.session_key = str(uuid.uuid4()).replace('-', '')
+            now = datetime.datetime.now()
+            session.create_date = now
+            session.last_modify_date = now
+            
+            self.db.add(session)
+            await self.db.flush()
+            return True
+        except Exception as ex:
+            logger.error("创建聊天会话失败", exc_info=ex)
+            raise
+
+    async def update_async(self, session: ChatSession) -> bool:
+        """
+        更新会话
+        
+        Args:
+            session: 会话实体
+            
+        Returns:
+            操作结果
+        """
+        try:
+            session.last_modify_date = datetime.datetime.now()
+            
+            await self.db.execute(
+                update(ChatSession)
+                .where(ChatSession.id == session.id)
+                .values(
+                    user_name=session.user_name,
+                    session_name=session.session_name,
+                    status=session.status,
+                    last_modify_date=session.last_modify_date
+                )
+            )
+            await self.db.flush()
+            return True
+        except Exception as ex:
+            logger.error(f"更新聊天会话失败, ID: {session.id}", exc_info=ex)
+            raise
+
+    async def end_session_async(self, id: int) -> bool:
+        """
+        结束会话
+        
+        Args:
+            id: 会话ID
+            
+        Returns:
+            操作结果
+        """
+        try:
+            now = datetime.datetime.now()
+            await self.db.execute(
+                update(ChatSession)
+                .where(ChatSession.id == id)
+                .values(
+                    status=ChatSessionStatus.ENDED,
+                    last_modify_date=now
+                )
+            )
+            await self.db.flush()
+            return True
+        except Exception as ex:
+            logger.error(f"结束聊天会话失败, ID: {id}", exc_info=ex)
+            raise
+
+    async def delete_async(self, id: int) -> bool:
+        """
+        删除会话
+        
+        Args:
+            id: 会话ID
+            
+        Returns:
+            操作结果
+        """
+        try:
+            await self.db.execute(
+                delete(ChatSession).where(ChatSession.id == id)
+            )
+            await self.db.flush()
+            return True
+        except Exception as ex:
+            logger.error(f"删除聊天会话失败, ID: {id}", exc_info=ex)
+            raise
