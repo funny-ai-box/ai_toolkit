@@ -13,7 +13,8 @@
                 "--reload"                        // 可选：在调试时启用重载，方便修改代码后自动重启调试会话
                 // 如果不需要重载，可以移除 "--reload"
             ],
-            "jinja": true,                       // 如果你使用 Jinja2 模板（目前看你的 API 项目不需要，但保留无害）
+            "jinja": true,
+            "justMyCode": false,                       // 如果你使用 Jinja2 模板（目前看你的 API 项目不需要，但保留无害）
             "cwd": "${workspaceFolder}",          // **重要**: 确保工作目录是项目根目录 (ai_toolkit_py)
             "console": "integratedTerminal"       // **推荐**: 在 VS Code 集成终端中显示 uvicorn 的输出和你的 print 语句
             // "console": "internalConsole" // 或者使用内部调试控制台，但输出可能不如终端清晰
