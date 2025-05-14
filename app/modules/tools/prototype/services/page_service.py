@@ -1,14 +1,12 @@
-"""
-原型页面服务，处理页面的查询和管理
-"""
-import logging
+# app/modules/tools/prototype/services/page_service.py
 from typing import List, Optional
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException, ForbiddenException, BusinessException
+from app.core.exceptions import NotFoundException, BusinessException, ForbiddenException
+from app.modules.tools.prototype.constants import PrototypePageStatus
 from app.modules.tools.prototype.dtos import PageDetailDto, PageHistoryDto
-from app.modules.tools.prototype.enums import PrototypePageStatus
 from app.modules.tools.prototype.repositories import (
     PrototypeSessionRepository, PrototypePageRepository, PrototypePageHistoryRepository
 )
@@ -23,10 +21,10 @@ class PrototypePageService:
         session_repository: PrototypeSessionRepository,
         page_repository: PrototypePageRepository,
         page_history_repository: PrototypePageHistoryRepository,
-        logger: logging.Logger
+        logger: Optional[logging.Logger] = None
     ):
         """
-        初始化页面服务
+        初始化
         
         Args:
             db: 数据库会话
@@ -39,7 +37,7 @@ class PrototypePageService:
         self.session_repository = session_repository
         self.page_repository = page_repository
         self.page_history_repository = page_history_repository
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
     
     async def get_page_async(self, user_id: int, page_id: int, include_history: bool = False) -> PageDetailDto:
         """
@@ -66,18 +64,18 @@ class PrototypePageService:
             # 转换为DTO
             result = PageDetailDto(
                 id=page.id,
-                sessionId=page.session_id,
+                session_id=page.session_id,
                 name=page.name,
                 path=page.path,
                 description=page.description,
                 content=page.content,
                 status=page.status,
-                statusDescription=self._get_page_status_description(page.status),
-                errorMessage=page.error_message,
+                status_description=self._get_page_status_description(page.status),
+                error_message=page.error_message,
                 order=page.order,
                 version=page.version,
-                createDate=page.create_date,
-                lastModifyDate=page.last_modify_date
+                create_date=page.create_date,
+                last_modify_date=page.last_modify_date
             )
             
             # 如果需要包含历史版本，则获取历史版本列表
@@ -86,20 +84,22 @@ class PrototypePageService:
                 result.history = [
                     PageHistoryDto(
                         id=h.id,
-                        pageId=h.page_id,
+                        page_id=h.page_id,
                         version=h.version,
-                        changeDescription=h.change_description,
-                        createDate=h.create_date
+                        change_description=h.change_description,
+                        create_date=h.create_date
                     )
                     for h in history
                 ]
             
             return result
+            
         except Exception as ex:
-            if not isinstance(ex, (NotFoundException, ForbiddenException)):
-                self.logger.error(f"获取页面详情失败，ID: {page_id}", exc_info=ex)
-                raise BusinessException(f"获取页面详情失败: {str(ex)}")
-            raise
+            if isinstance(ex, (NotFoundException, ForbiddenException)):
+                raise
+            
+            self.logger.error(f"获取页面详情失败，ID: {page_id}: {str(ex)}")
+            raise BusinessException(f"获取页面详情失败: {str(ex)}")
     
     async def get_session_pages_async(self, user_id: int, session_id: int) -> List[PageDetailDto]:
         """
@@ -119,29 +119,32 @@ class PrototypePageService:
                 raise ForbiddenException("无权访问该会话")
             
             pages = await self.page_repository.get_by_session_id_async(session_id)
+            
             return [
                 PageDetailDto(
                     id=p.id,
-                    sessionId=p.session_id,
+                    session_id=p.session_id,
                     name=p.name,
                     path=p.path,
                     description=p.description,
                     content=None,  # 不返回页面内容
                     status=p.status,
-                    statusDescription=self._get_page_status_description(p.status),
-                    errorMessage=p.error_message,
+                    status_description=self._get_page_status_description(p.status),
+                    error_message=p.error_message,
                     order=p.order,
                     version=p.version,
-                    createDate=p.create_date,
-                    lastModifyDate=p.last_modify_date
+                    create_date=p.create_date,
+                    last_modify_date=p.last_modify_date
                 )
                 for p in pages
             ]
+            
         except Exception as ex:
-            if not isinstance(ex, ForbiddenException):
-                self.logger.error(f"获取会话页面列表失败，会话ID: {session_id}", exc_info=ex)
-                raise BusinessException(f"获取会话页面列表失败: {str(ex)}")
-            raise
+            if isinstance(ex, ForbiddenException):
+                raise
+            
+            self.logger.error(f"获取会话页面列表失败，会话ID: {session_id}: {str(ex)}")
+            raise BusinessException(f"获取会话页面列表失败: {str(ex)}")
     
     def _get_page_status_description(self, status: PrototypePageStatus) -> str:
         """
@@ -153,15 +156,11 @@ class PrototypePageService:
         Returns:
             状态描述
         """
-        if status == PrototypePageStatus.PENDING:
-            return "待生成"
-        elif status == PrototypePageStatus.GENERATING:
-            return "生成中"
-        elif status == PrototypePageStatus.GENERATED:
-            return "已生成"
-        elif status == PrototypePageStatus.FAILED:
-            return "生成失败"
-        elif status == PrototypePageStatus.MODIFIED:
-            return "已修改"
-        else:
-            return "未知状态"
+        status_descriptions = {
+            PrototypePageStatus.PENDING: "待生成",
+            PrototypePageStatus.GENERATING: "生成中",
+            PrototypePageStatus.GENERATED: "已生成",
+            PrototypePageStatus.FAILED: "生成失败",
+            PrototypePageStatus.MODIFIED: "已修改"
+        }
+        return status_descriptions.get(status, "未知状态")

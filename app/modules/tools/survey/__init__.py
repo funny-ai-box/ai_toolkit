@@ -1,1 +1,0 @@
-"""Survey module initialization"""

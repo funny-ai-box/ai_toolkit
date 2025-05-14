@@ -1,22 +1,19 @@
-"""
-原型HTML预览服务，用于渲染HTML预览页面
-"""
-import logging
+# app/modules/tools/prototype/services/preview_service.py
 import re
 from typing import List, Optional
-
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException, ForbiddenException, BusinessException
-from app.modules.tools.prototype.dtos import AppPreviewDto, PageDetailDto, ResourceDto, PageStructureDto
-from app.modules.tools.prototype.enums import PrototypePageStatus
+from app.core.exceptions import NotFoundException, BusinessException, ForbiddenException
+from app.modules.tools.prototype.dtos import AppPreviewDto, PageDetailDto, ResourceDto
+from app.modules.tools.prototype.models import PrototypePage, PrototypeSession
 from app.modules.tools.prototype.repositories import (
     PrototypeSessionRepository, PrototypePageRepository, PrototypeResourceRepository
 )
 
 
-class PrototypeHtmlPreviewService:
-    """HTML预览服务实现"""
+class PrototypePreviewService:
+    """原型预览服务实现"""
     
     # 优化后的页面渲染器基本框架
     _html_template_for_spa = """<!DOCTYPE html>
@@ -30,7 +27,7 @@ class PrototypeHtmlPreviewService:
   <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
   <style>
     /* 全局动画效果 */
-    .transition-all { transition: all 0.3s ease; }
+    .transition-all {{ transition: all 0.3s ease; }}
     
     /* 自定义样式 */
     {1}
@@ -43,15 +40,15 @@ class PrototypeHtmlPreviewService:
   </div>
 
   <script>    
- document.addEventListener('DOMContentLoaded', () => {
+ document.addEventListener('DOMContentLoaded', () => {{
     const fallback =
       'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=800&q=80';
-    document.querySelectorAll('img[data-fallback="true"]').forEach((img) => {
-      img.addEventListener('error', () => {
+    document.querySelectorAll('img[data-fallback="true"]').forEach((img) => {{
+      img.addEventListener('error', () => {{
         img.src = fallback;
-      });
-    });
-  });
+      }});
+    }});
+  }});
   </script>
 </body>
 </html>"""
@@ -68,7 +65,7 @@ class PrototypeHtmlPreviewService:
   <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
   <style>
     /* 全局动画效果 */
-    .transition-all { transition: all 0.3s ease; }
+    .transition-all {{ transition: all 0.3s ease; }}
     
     /* 自定义样式 */
     {1}
@@ -78,15 +75,15 @@ class PrototypeHtmlPreviewService:
   {2}
   
   <script>     
- document.addEventListener('DOMContentLoaded', () => {
+ document.addEventListener('DOMContentLoaded', () => {{
     const fallback =
       'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=800&q=80';
-    document.querySelectorAll('img[data-fallback="true"]').forEach((img) => {
-      img.addEventListener('error', () => {
+    document.querySelectorAll('img[data-fallback="true"]').forEach((img) => {{
+      img.addEventListener('error', () => {{
         img.src = fallback;
-      });
-    });
-  });
+      }});
+    }});
+  }});
   </script>
 </body>
 </html>"""
@@ -97,10 +94,10 @@ class PrototypeHtmlPreviewService:
         session_repository: PrototypeSessionRepository,
         page_repository: PrototypePageRepository,
         resource_repository: PrototypeResourceRepository,
-        logger: logging.Logger
+        logger: Optional[logging.Logger] = None
     ):
         """
-        初始化HTML预览服务
+        初始化
         
         Args:
             db: 数据库会话
@@ -113,7 +110,7 @@ class PrototypeHtmlPreviewService:
         self.session_repository = session_repository
         self.page_repository = page_repository
         self.resource_repository = resource_repository
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
     
     async def get_app_preview_async(self, user_id: int, session_id: int) -> AppPreviewDto:
         """
@@ -143,35 +140,35 @@ class PrototypeHtmlPreviewService:
         
         # 构建预览对象
         preview = AppPreviewDto(
-            sessionId=session_id,
+            session_id=session_id,
             name=session.name,
             pages=[
                 PageDetailDto(
                     id=p.id,
-                    sessionId=p.session_id,
+                    session_id=p.session_id,
                     name=p.name,
                     path=p.path,
                     description=p.description,
                     content=p.content,
                     status=p.status,
-                    statusDescription=self._get_page_status_description(p.status),
-                    errorMessage=p.error_message,
+                    status_description=self._get_page_status_description(p.status),
+                    error_message=p.error_message,
                     order=p.order,
                     version=p.version,
-                    createDate=p.create_date,
-                    lastModifyDate=p.last_modify_date
+                    create_date=p.create_date,
+                    last_modify_date=p.last_modify_date
                 )
                 for p in pages
             ],
             resources=[
                 ResourceDto(
                     id=r.id,
-                    sessionId=r.session_id,
+                    session_id=r.session_id,
                     name=r.name,
-                    resourceType=r.resource_type,
+                    resource_type=r.resource_type,
                     url=r.url,
                     content=r.content,
-                    createDate=r.create_date
+                    create_date=r.create_date
                 )
                 for r in resources
             ]
@@ -182,8 +179,8 @@ class PrototypeHtmlPreviewService:
         if home_page is None:
             home_page = min(pages, key=lambda p: p.order) if pages else None
         
-        if home_page is not None:
-            preview.entryUrl = f"/api/prototype/preview/{session_id}{home_page.path}"
+        if home_page:
+            preview.entry_url = f"/api/prototype/preview/{session_id}{home_page.path}"
         
         return preview
     
@@ -201,7 +198,7 @@ class PrototypeHtmlPreviewService:
         # 检查会话是否存在
         session = await self.session_repository.get_by_id_async(session_id)
         if session is None:
-            raise ForbiddenException("会话不存在")
+            raise NotFoundException("会话不存在")
         
         # 标准化路径
         if not path.startswith("/"):
@@ -222,29 +219,16 @@ class PrototypeHtmlPreviewService:
         # 检查是否应用SPA模式或多页面模式
         is_spa_mode = self._is_spa_application(session, all_pages)
         
-        # 准备CSS和导航内容
+        # 提取自定义样式
         custom_css = self._extract_custom_styles(page.content)
         
-        # 如果是SPA模式，生成完整应用内容
+        # 根据模式生成完整HTML
         if is_spa_mode:
-            return self._generate_spa_html(
-                session.name or "原型应用", 
-                custom_css, 
-                page.content, 
-                all_pages, 
-                session_id
-            )
+            return self._generate_spa_html(session.name or "原型应用", custom_css, page.content, all_pages, session_id)
         else:
-            # 多页面模式，生成完整HTML页面
-            return self._generate_multi_page_html(
-                page.name or path, 
-                custom_css, 
-                page.content, 
-                all_pages, 
-                session_id
-            )
+            return self._generate_multi_page_html(page.name or path, custom_css, page.content, all_pages, session_id)
     
-    def _is_spa_application(self, session, pages):
+    def _is_spa_application(self, session: PrototypeSession, pages: List[PrototypePage]) -> bool:
         """
         判断是否应使用SPA模式
         
@@ -258,17 +242,17 @@ class PrototypeHtmlPreviewService:
         # 从需求中判断
         if session.requirements:
             requirements = session.requirements.lower()
-            if any(term in requirements for term in ["spa", "single page application", "单页应用"]):
+            if "spa" in requirements or "single page application" in requirements or "单页应用" in requirements:
                 return True
         
         # 检查页面内容是否含有SPA特征
         for page in pages:
             if page.content:
-                if any(term in page.content for term in [
-                    'data-spa="true"', 
-                    'id="spa-app"', 
-                    'class="spa-'
-                ]):
+                if (
+                    'data-spa="true"' in page.content
+                    or 'id="spa-app"' in page.content
+                    or 'class="spa-' in page.content
+                ):
                     return True
         
         # 如果页面少于3个，默认使用SPA模式
@@ -277,7 +261,7 @@ class PrototypeHtmlPreviewService:
         
         return False
     
-    def _extract_custom_styles(self, content):
+    def _extract_custom_styles(self, content: str) -> str:
         """
         提取自定义样式
         
@@ -298,7 +282,9 @@ class PrototypeHtmlPreviewService:
         
         return "\n".join(custom_css)
     
-    def _generate_spa_html(self, title, custom_css, content, all_pages, session_id):
+    def _generate_spa_html(
+        self, title: str, custom_css: str, content: str, all_pages: List[PrototypePage], session_id: int
+    ) -> str:
         """
         生成SPA模式的HTML
         
@@ -321,7 +307,9 @@ class PrototypeHtmlPreviewService:
         # 填充模板
         return self._html_template_for_spa.format(title, custom_css, clean_content)
     
-    def _generate_multi_page_html(self, title, custom_css, content, all_pages, session_id):
+    def _generate_multi_page_html(
+        self, title: str, custom_css: str, content: str, all_pages: List[PrototypePage], session_id: int
+    ) -> str:
         """
         生成多页面模式的HTML
         
@@ -344,9 +332,10 @@ class PrototypeHtmlPreviewService:
         # 填充模板
         return self._html_template_for_multi_page.format(title, custom_css, clean_content)
     
-    def _process_links(self, html, session_id):
+    def _process_links(self, html: str, session_id: int) -> str:
         """
         处理HTML中的链接，添加sessionId参数
+        这里简化实现，只返回原始内容
         
         Args:
             html: HTML内容
@@ -355,11 +344,9 @@ class PrototypeHtmlPreviewService:
         Returns:
             处理后的HTML
         """
-        # 为简化实现，这里直接返回原始内容
-        # 在实际生产环境中，可以根据需要处理链接，例如添加sessionId参数
         return html
     
-    def _get_page_status_description(self, status: PrototypePageStatus) -> str:
+    def _get_page_status_description(self, status: int) -> str:
         """
         获取页面状态描述
         
@@ -369,15 +356,11 @@ class PrototypeHtmlPreviewService:
         Returns:
             状态描述
         """
-        if status == PrototypePageStatus.PENDING:
-            return "待生成"
-        elif status == PrototypePageStatus.GENERATING:
-            return "生成中"
-        elif status == PrototypePageStatus.GENERATED:
-            return "已生成"
-        elif status == PrototypePageStatus.FAILED:
-            return "生成失败"
-        elif status == PrototypePageStatus.MODIFIED:
-            return "已修改"
-        else:
-            return "未知状态"
+        status_descriptions = {
+            0: "待生成",
+            1: "生成中",
+            2: "已生成",
+            3: "生成失败",
+            4: "已修改"
+        }
+        return status_descriptions.get(status, "未知状态")

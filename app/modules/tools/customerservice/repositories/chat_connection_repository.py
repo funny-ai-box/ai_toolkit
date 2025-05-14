@@ -1,22 +1,19 @@
 """
 聊天连接仓储实现
 """
-import datetime
-import logging
 from typing import List, Optional
-
-from sqlalchemy import select, update, delete
+import logging
+from datetime import datetime
+from sqlalchemy import select, and_, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.utils.snowflake import generate_id
-from app.modules.tools.customerservice.entities import ChatConnection
+from app.modules.tools.customerservice.entities.chat import ChatConnection
+from app.modules.tools.customerservice.repositories.iface.chat_connection_repository import IChatConnectionRepository
 
-logger = logging.getLogger(__name__)
-
-
-class ChatConnectionRepository:
-    """聊天连接仓储"""
-
+class ChatConnectionRepository(IChatConnectionRepository):
+    """聊天连接仓储实现"""
+    
     def __init__(self, db: AsyncSession):
         """
         初始化聊天连接仓储
@@ -25,7 +22,8 @@ class ChatConnectionRepository:
             db: 数据库会话
         """
         self.db = db
-
+        self.logger = logging.getLogger(__name__)
+    
     async def get_by_id_async(self, id: int) -> Optional[ChatConnection]:
         """
         获取连接
@@ -37,14 +35,13 @@ class ChatConnectionRepository:
             连接实体
         """
         try:
-            result = await self.db.execute(
-                select(ChatConnection).where(ChatConnection.id == id)
-            )
-            return result.scalar_one_or_none()
+            query = select(ChatConnection).where(ChatConnection.id == id)
+            result = await self.db.execute(query)
+            return result.scalars().first()
         except Exception as ex:
-            logger.error(f"获取聊天连接失败, ID: {id}", exc_info=ex)
+            self.logger.error(f"获取聊天连接失败, ID: {id}, 错误: {str(ex)}")
             raise
-
+    
     async def get_by_connection_id_async(self, connection_id: str) -> Optional[ChatConnection]:
         """
         根据连接ID获取连接
@@ -56,14 +53,13 @@ class ChatConnectionRepository:
             连接实体
         """
         try:
-            result = await self.db.execute(
-                select(ChatConnection).where(ChatConnection.connection_id == connection_id)
-            )
-            return result.scalar_one_or_none()
+            query = select(ChatConnection).where(ChatConnection.connection_id == connection_id)
+            result = await self.db.execute(query)
+            return result.scalars().first()
         except Exception as ex:
-            logger.error(f"根据连接ID获取聊天连接失败, ConnectionId: {connection_id}", exc_info=ex)
+            self.logger.error(f"根据连接ID获取聊天连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
-
+    
     async def get_session_connections_async(self, session_id: int, active_only: bool = True) -> List[ChatConnection]:
         """
         获取会话的连接
@@ -80,13 +76,13 @@ class ChatConnectionRepository:
             
             if active_only:
                 query = query.where(ChatConnection.is_active == 1)
-                
+            
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            logger.error(f"获取会话连接失败, 会话ID: {session_id}", exc_info=ex)
+            self.logger.error(f"获取会话连接失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise
-
+    
     async def add_async(self, connection: ChatConnection) -> bool:
         """
         添加连接
@@ -99,7 +95,7 @@ class ChatConnectionRepository:
         """
         try:
             connection.id = generate_id()
-            now = datetime.datetime.now()
+            now = datetime.now()
             connection.last_active_time = now
             connection.create_date = now
             connection.last_modify_date = now
@@ -108,9 +104,9 @@ class ChatConnectionRepository:
             await self.db.flush()
             return True
         except Exception as ex:
-            logger.error("添加聊天连接失败", exc_info=ex)
+            self.logger.error(f"添加聊天连接失败, 错误: {str(ex)}")
             raise
-
+    
     async def update_async(self, connection: ChatConnection) -> bool:
         """
         更新连接
@@ -122,25 +118,14 @@ class ChatConnectionRepository:
             操作结果
         """
         try:
-            connection.last_modify_date = datetime.datetime.now()
-            
-            await self.db.execute(
-                update(ChatConnection)
-                .where(ChatConnection.id == connection.id)
-                .values(
-                    connection_id=connection.connection_id,
-                    client_type=connection.client_type,
-                    is_active=connection.is_active,
-                    last_active_time=connection.last_active_time,
-                    last_modify_date=connection.last_modify_date
-                )
-            )
+            connection.last_modify_date = datetime.now()
+            await self.db.merge(connection)
             await self.db.flush()
             return True
         except Exception as ex:
-            logger.error(f"更新聊天连接失败, ID: {connection.id}", exc_info=ex)
+            self.logger.error(f"更新聊天连接失败, ID: {connection.id}, 错误: {str(ex)}")
             raise
-
+    
     async def update_connection_status_async(self, connection_id: str, is_active: bool) -> bool:
         """
         更新连接活跃状态
@@ -153,22 +138,21 @@ class ChatConnectionRepository:
             操作结果
         """
         try:
-            now = datetime.datetime.now()
-            await self.db.execute(
-                update(ChatConnection)
-                .where(ChatConnection.connection_id == connection_id)
-                .values(
-                    is_active=1 if is_active else 0,
-                    last_active_time=now,
-                    last_modify_date=now
-                )
-            )
+            connection = await self.get_by_connection_id_async(connection_id)
+            if not connection:
+                return False
+            
+            connection.is_active = 1 if is_active else 0
+            connection.last_active_time = datetime.now()
+            connection.last_modify_date = datetime.now()
+            
+            await self.db.merge(connection)
             await self.db.flush()
             return True
         except Exception as ex:
-            logger.error(f"更新聊天连接状态失败, ConnectionId: {connection_id}", exc_info=ex)
+            self.logger.error(f"更新聊天连接状态失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
-
+    
     async def update_last_active_time_async(self, connection_id: str) -> bool:
         """
         更新连接最后活跃时间
@@ -180,21 +164,21 @@ class ChatConnectionRepository:
             操作结果
         """
         try:
-            now = datetime.datetime.now()
-            await self.db.execute(
-                update(ChatConnection)
-                .where(ChatConnection.connection_id == connection_id)
-                .values(
-                    last_active_time=now,
-                    last_modify_date=now
-                )
-            )
+            connection = await self.get_by_connection_id_async(connection_id)
+            if not connection:
+                return False
+            
+            now = datetime.now()
+            connection.last_active_time = now
+            connection.last_modify_date = now
+            
+            await self.db.merge(connection)
             await self.db.flush()
             return True
         except Exception as ex:
-            logger.error(f"更新聊天连接最后活跃时间失败, ConnectionId: {connection_id}", exc_info=ex)
+            self.logger.error(f"更新聊天连接最后活跃时间失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
-
+    
     async def delete_async(self, connection_id: str) -> bool:
         """
         删除连接
@@ -206,15 +190,17 @@ class ChatConnectionRepository:
             操作结果
         """
         try:
-            await self.db.execute(
-                delete(ChatConnection).where(ChatConnection.connection_id == connection_id)
-            )
+            connection = await self.get_by_connection_id_async(connection_id)
+            if not connection:
+                return False
+            
+            await self.db.delete(connection)
             await self.db.flush()
             return True
         except Exception as ex:
-            logger.error(f"删除聊天连接失败, ConnectionId: {connection_id}", exc_info=ex)
+            self.logger.error(f"删除聊天连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
-
+    
     async def delete_session_connections_async(self, session_id: int) -> bool:
         """
         删除会话的所有连接
@@ -226,15 +212,17 @@ class ChatConnectionRepository:
             操作结果
         """
         try:
-            await self.db.execute(
-                delete(ChatConnection).where(ChatConnection.session_id == session_id)
-            )
+            connections = await self.get_session_connections_async(session_id, False)
+            
+            for connection in connections:
+                await self.db.delete(connection)
+            
             await self.db.flush()
             return True
         except Exception as ex:
-            logger.error(f"删除会话所有连接失败, 会话ID: {session_id}", exc_info=ex)
+            self.logger.error(f"删除会话所有连接失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise
-
+    
     async def cleanup_expired_connections_async(self, expiry_minutes: int = 30) -> int:
         """
         清理过期连接
@@ -243,26 +231,29 @@ class ChatConnectionRepository:
             expiry_minutes: 过期时间（分钟）
             
         Returns:
-            操作结果
+            清理的连接数
         """
         try:
-            now = datetime.datetime.now()
-            expiry_time = now - datetime.timedelta(minutes=expiry_minutes)
+            expiry_time = datetime.now().timestamp() - (expiry_minutes * 60)
+            expiry_datetime = datetime.fromtimestamp(expiry_time)
             
-            result = await self.db.execute(
-                update(ChatConnection)
-                .where(
-                    (ChatConnection.last_active_time < expiry_time) & 
-                    (ChatConnection.is_active == 1)
-                )
-                .values(
-                    is_active=0,
-                    last_modify_date=now
+            query = select(ChatConnection).where(
+                and_(
+                    ChatConnection.last_active_time < expiry_datetime,
+                    ChatConnection.is_active == 1
                 )
             )
             
+            result = await self.db.execute(query)
+            connections = result.scalars().all()
+            
+            for connection in connections:
+                connection.is_active = 0
+                connection.last_modify_date = datetime.now()
+                await self.db.merge(connection)
+            
             await self.db.flush()
-            return result.rowcount
+            return len(connections)
         except Exception as ex:
-            logger.error(f"清理过期连接失败, 过期时间: {expiry_minutes}分钟", exc_info=ex)
+            self.logger.error(f"清理过期连接失败, 过期时间: {expiry_minutes}分钟, 错误: {str(ex)}")
             raise

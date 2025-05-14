@@ -135,6 +135,16 @@ class Settings(BaseSettings):
     SPEECH_SERVICE_TYPE: Optional[str] = None
 
 
+    PROTOTYPE_IMAGE_STORAGE_PROVIDER: str = Field(
+        default="AzureBlob",
+        alias="PROTOTYPE_IMAGE_STORAGE_PROVIDER"
+    )
+    PROTOTYPE_CHAT_AI_PROVIDER_TYPE: str = Field(
+        default="Gemini",
+        alias="PROTOTYPE_CHAT_AI_PROVIDER_TYPE"
+    )
+
+
     # Pydantic-Settings 配置
     model_config = SettingsConfigDict(
         env_file=ENV_FILE_PATH, # 指定 .env 文件路径

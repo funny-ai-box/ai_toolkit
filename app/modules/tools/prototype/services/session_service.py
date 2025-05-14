@@ -1,19 +1,17 @@
-"""
-原型会话服务，处理会话的创建、查询和更新
-"""
+# app/modules/tools/prototype/services/session_service.py
+import datetime
+from typing import List, Optional
 import logging
-from typing import Dict, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dtos import PagedResultDto
 from app.core.exceptions import NotFoundException, BusinessException
+from app.modules.tools.prototype.constants import PrototypeSessionStatus, PrototypePageStatus, PrototypeMessageType
 from app.modules.tools.prototype.dtos import (
-    CreateSessionRequestDto, UpdateSessionRequestDto, 
-    SessionListItemDto, SessionDetailDto, PageDetailDto,
-    GetSessionDetailRequestDto
+    CreateSessionRequestDto, GetSessionDetailRequestDto, UpdateSessionRequestDto,
+    SessionListItemDto, SessionDetailDto, PageDetailDto, BasePageRequestDto
 )
-from app.modules.tools.prototype.enums import PrototypeSessionStatus, PrototypePageStatus, PrototypeMessageType
 from app.modules.tools.prototype.models import PrototypeSession, PrototypeMessage
 from app.modules.tools.prototype.repositories import (
     PrototypeSessionRepository, PrototypePageRepository, 
@@ -31,10 +29,10 @@ class PrototypeSessionService:
         page_repository: PrototypePageRepository,
         message_repository: PrototypeMessageRepository,
         resource_repository: PrototypeResourceRepository,
-        logger: logging.Logger
+        logger: Optional[logging.Logger] = None
     ):
         """
-        初始化会话服务
+        初始化
         
         Args:
             db: 数据库会话
@@ -49,7 +47,7 @@ class PrototypeSessionService:
         self.page_repository = page_repository
         self.message_repository = message_repository
         self.resource_repository = resource_repository
-        self.logger = logger
+        self.logger = logger or logging.getLogger(__name__)
     
     async def create_session_async(self, user_id: int, request: CreateSessionRequestDto) -> int:
         """
@@ -66,7 +64,7 @@ class PrototypeSessionService:
             # 创建会话
             session = PrototypeSession(
                 user_id=user_id,
-                name="新的会话" if not request.name else request.name,
+                name=request.name if request.name else "新的会话",
                 description=request.description,
                 status=PrototypeSessionStatus.REQUIREMENT_GATHERING,
             )
@@ -86,11 +84,13 @@ class PrototypeSessionService:
             await self.message_repository.add_async(welcome_message)
             
             return session_id
+        
         except Exception as ex:
-            if not isinstance(ex, BusinessException):
-                self.logger.error(f"创建会话失败: {str(ex)}", exc_info=ex)
-                raise BusinessException(f"创建会话失败: {str(ex)}")
-            raise
+            if isinstance(ex, BusinessException):
+                raise
+            
+            self.logger.error(f"创建会话失败: {str(ex)}")
+            raise BusinessException(f"创建会话失败: {str(ex)}")
     
     async def get_session_async(self, user_id: int, request: GetSessionDetailRequestDto) -> SessionDetailDto:
         """
@@ -98,7 +98,7 @@ class PrototypeSessionService:
         
         Args:
             user_id: 用户ID
-            request: 请求对象
+            request: 会话ID请求
             
         Returns:
             会话详情
@@ -114,12 +114,12 @@ class PrototypeSessionService:
                 name=session.name,
                 description=session.description,
                 status=session.status,
-                statusDescription=self._get_session_status_description(session.status),
+                status_description=self._get_session_status_description(session.status),
                 requirements=session.requirements,
-                pageStructure=session.page_structure,
-                isGeneratingCode=session.is_generating_code,
-                createDate=session.create_date,
-                lastModifyDate=session.last_modify_date
+                page_structure=session.page_structure,
+                is_generating_code=session.is_generating_code,
+                create_date=session.create_date,
+                last_modify_date=session.last_modify_date
             )
             
             # 如果需要包含页面详情，则获取页面列表
@@ -128,30 +128,35 @@ class PrototypeSessionService:
                 result.pages = [
                     PageDetailDto(
                         id=p.id,
-                        sessionId=p.session_id,
+                        session_id=p.session_id,
                         name=p.name,
                         path=p.path,
                         description=p.description,
                         content=p.content,
                         status=p.status,
-                        statusDescription=self._get_page_status_description(p.status),
-                        errorMessage=p.error_message,
+                        status_description=self._get_page_status_description(p.status),
+                        error_message=p.error_message,
                         order=p.order,
                         version=p.version,
-                        createDate=p.create_date,
-                        lastModifyDate=p.last_modify_date
+                        history=None,  # 不包含历史版本
+                        create_date=p.create_date,
+                        last_modify_date=p.last_modify_date
                     )
                     for p in pages
                 ]
             
             return result
+        
         except Exception as ex:
-            if not isinstance(ex, NotFoundException):
-                self.logger.error(f"获取会话详情失败，ID: {request.id}", exc_info=ex)
-                raise BusinessException(f"获取会话详情失败: {str(ex)}")
-            raise
+            if isinstance(ex, NotFoundException):
+                raise
+            
+            self.logger.error(f"获取会话详情失败，ID: {request.id}: {str(ex)}")
+            raise BusinessException(f"获取会话详情失败: {str(ex)}")
     
-    async def get_user_sessions_async(self, user_id: int, request) -> PagedResultDto[SessionListItemDto]:
+    async def get_user_sessions_async(
+        self, user_id: int, request: BasePageRequestDto
+    ) -> PagedResultDto[SessionListItemDto]:
         """
         获取用户会话列表
         
@@ -164,11 +169,12 @@ class PrototypeSessionService:
         """
         try:
             sessions, total_count = await self.session_repository.get_paginated_async(
-                user_id, request.page_index, request.page_size)
+                user_id, request.page_index, request.page_size
+            )
             
             # 获取每个会话的页面数量
             session_ids = [s.id for s in sessions]
-            page_count_dict: Dict[int, int] = {}
+            page_count_dict = {}
             
             if session_ids:
                 for session_id in session_ids:
@@ -181,24 +187,29 @@ class PrototypeSessionService:
                     id=s.id,
                     name=s.name,
                     status=s.status,
-                    statusDescription=self._get_session_status_description(s.status),
-                    pageCount=page_count_dict.get(s.id, 0),
-                    createDate=s.create_date,
-                    lastModifyDate=s.last_modify_date
+                    status_description=self._get_session_status_description(s.status),
+                    page_count=page_count_dict.get(s.id, 0),
+                    create_date=s.create_date,
+                    last_modify_date=s.last_modify_date
                 )
                 for s in sessions
             ]
             
             # 构建分页结果
-            return PagedResultDto[SessionListItemDto](
+            # app/modules/tools/prototype/services/session_service.py (continued)
+            # 构建分页结果
+            result = PagedResultDto[SessionListItemDto](
                 items=items,
-                totalCount=total_count,
-                pageIndex=request.page_index,
-                pageSize=request.page_size,
-                totalPages=(total_count + request.page_size - 1) // request.page_size
+                total_count=total_count,
+                page_index=request.page_index,
+                page_size=request.page_size,
+                total_pages=(total_count + request.page_size - 1) // request.page_size
             )
+            
+            return result
+            
         except Exception as ex:
-            self.logger.error("获取用户会话列表失败", exc_info=ex)
+            self.logger.error(f"获取用户会话列表失败: {str(ex)}")
             raise BusinessException(f"获取会话列表失败: {str(ex)}")
     
     async def update_session_async(self, user_id: int, request: UpdateSessionRequestDto) -> bool:
@@ -222,11 +233,13 @@ class PrototypeSessionService:
             session.description = request.description
             
             return await self.session_repository.update_async(session)
+            
         except Exception as ex:
-            if not isinstance(ex, NotFoundException):
-                self.logger.error(f"更新会话信息失败，ID: {request.id}", exc_info=ex)
-                raise BusinessException(f"更新会话信息失败: {str(ex)}")
-            raise
+            if isinstance(ex, NotFoundException):
+                raise
+            
+            self.logger.error(f"更新会话信息失败，ID: {request.id}: {str(ex)}")
+            raise BusinessException(f"更新会话信息失败: {str(ex)}")
     
     async def delete_session_async(self, user_id: int, session_id: int) -> bool:
         """
@@ -250,11 +263,13 @@ class PrototypeSessionService:
             await self.resource_repository.delete_by_session_id_async(session_id)
             # 最后删除会话
             return await self.session_repository.delete_async(session_id)
+            
         except Exception as ex:
-            if not isinstance(ex, NotFoundException):
-                self.logger.error(f"删除会话失败，ID: {session_id}", exc_info=ex)
-                raise BusinessException(f"删除会话失败: {str(ex)}")
-            raise
+            if isinstance(ex, NotFoundException):
+                raise
+            
+            self.logger.error(f"删除会话失败，ID: {session_id}: {str(ex)}")
+            raise BusinessException(f"删除会话失败: {str(ex)}")
     
     def _get_session_status_description(self, status: PrototypeSessionStatus) -> str:
         """
@@ -266,20 +281,16 @@ class PrototypeSessionService:
         Returns:
             状态描述
         """
-        if status == PrototypeSessionStatus.REQUIREMENT_GATHERING:
-            return "需求收集中"
-        elif status == PrototypeSessionStatus.REQUIREMENT_ANALYZING:
-            return "需求分析中"
-        elif status == PrototypeSessionStatus.STRUCTURE_CONFIRMATION:
-            return "结构确认中"
-        elif status == PrototypeSessionStatus.PAGE_GENERATION:
-            return "页面生成中"
-        elif status == PrototypeSessionStatus.COMPLETED:
-            return "已完成"
-        elif status == PrototypeSessionStatus.ABANDONED:
-            return "已放弃"
-        else:
-            return "未知状态"
+        status_descriptions = {
+            PrototypeSessionStatus.NONE: "未知",
+            PrototypeSessionStatus.REQUIREMENT_GATHERING: "需求收集中",
+            PrototypeSessionStatus.REQUIREMENT_ANALYZING: "需求分析中",
+            PrototypeSessionStatus.STRUCTURE_CONFIRMATION: "结构确认中",
+            PrototypeSessionStatus.PAGE_GENERATION: "页面生成中",
+            PrototypeSessionStatus.COMPLETED: "已完成",
+            PrototypeSessionStatus.ABANDONED: "已放弃"
+        }
+        return status_descriptions.get(status, "未知状态")
     
     def _get_page_status_description(self, status: PrototypePageStatus) -> str:
         """
@@ -291,15 +302,11 @@ class PrototypeSessionService:
         Returns:
             状态描述
         """
-        if status == PrototypePageStatus.PENDING:
-            return "待生成"
-        elif status == PrototypePageStatus.GENERATING:
-            return "生成中"
-        elif status == PrototypePageStatus.GENERATED:
-            return "已生成"
-        elif status == PrototypePageStatus.FAILED:
-            return "生成失败"
-        elif status == PrototypePageStatus.MODIFIED:
-            return "已修改"
-        else:
-            return "未知状态"
+        status_descriptions = {
+            PrototypePageStatus.PENDING: "待生成",
+            PrototypePageStatus.GENERATING: "生成中",
+            PrototypePageStatus.GENERATED: "已生成",
+            PrototypePageStatus.FAILED: "生成失败",
+            PrototypePageStatus.MODIFIED: "已修改"
+        }
+        return status_descriptions.get(status, "未知状态")

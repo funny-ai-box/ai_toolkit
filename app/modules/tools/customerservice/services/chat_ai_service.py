@@ -1,42 +1,53 @@
 """
-客服AI服务实现
+聊天AI服务实现
 """
-import json
 import logging
-from typing import List, Optional, Dict, Any, AsyncGenerator
+import json
+from typing import List, Optional, Dict, Any
+import httpx
 
 from app.core.ai.chat.base import IChatAIService
-from app.core.ai.dtos import ChatRoleType, InputMessage
+from app.core.ai.dtos import ChatRoleType, InputMessage, InputImageMessage
+from app.core.config.settings import Settings
 from app.modules.base.prompts.services import PromptTemplateService
-from app.modules.tools.customerservice.dtos import IntentRecognitionResultDto, ImageAnalysisResultDto
-
-logger = logging.getLogger(__name__)
-
+from app.modules.tools.customerservice.services.chat_tools_service import ChatToolsService
+from app.modules.tools.customerservice.services.dtos.chat_dto import (
+    IntentRecognitionResultDto, ImageAnalysisResultDto, ChatHistoryDto
+)
 
 class ChatAIService:
     """AI服务类"""
-
+    
     def __init__(
-        self, 
-        ai_service: IChatAIService, 
-        prompt_template_service: PromptTemplateService,
-        sensitive_words: str
+        self,
+        ai_service: IChatAIService,
+        chat_tools_service: ChatToolsService,
+        prompt_service: PromptTemplateService,
+        settings: Settings
     ):
         """
-        初始化AI服务类
+        初始化聊天AI服务
         
         Args:
             ai_service: AI服务
-            prompt_template_service: 提示词模板服务
-            sensitive_words: 敏感词
+            chat_tools_service: 聊天工具服务
+            prompt_service: 提示词模板服务
+            settings: 配置
         """
         self.ai_service = ai_service
-        self.prompt_template_service = prompt_template_service
-        self.sensitive_words = sensitive_words
-
+        self.chat_tools_service = chat_tools_service
+        self.prompt_service = prompt_service
+        self.settings = settings
+        self.logger = logging.getLogger(__name__)
+        
+        # 从配置中获取敏感词
+        customer_service_config = settings.json.get("CustomerService", {})
+        chat_config = customer_service_config.get("Chat", {})
+        self.sensitive_words = chat_config.get("SensitiveWords", "色情、赌博、毒品、暴力等违法内容")
+    
     async def get_embedding_async(self, text: str) -> List[float]:
         """
-        获取文本嵌入
+        获取文本嵌入向量
         
         Args:
             text: 文本
@@ -45,11 +56,11 @@ class ChatAIService:
             嵌入向量
         """
         return await self.ai_service.get_embedding_async(text)
-
+    
     async def analysis_intent_async(
-        self, 
-        user_id: int, 
-        history: List[Dict[str, Any]], 
+        self,
+        user_id: int,
+        history: List[ChatHistoryDto],
         message: str
     ) -> IntentRecognitionResultDto:
         """
@@ -68,49 +79,54 @@ class ChatAIService:
             messages = []
             
             # 添加意图分析的提示词
-            system_prompt = await self.prompt_template_service.get_content_by_key_async("CUSTOMERSERVICE_ANALYSISINTENT_PROMPT")
-            messages.append(InputMessage(role=ChatRoleType.SYSTEM, content=system_prompt))
-            messages.append(InputMessage(role=ChatRoleType.SYSTEM, content=f"敏感词包括：{self.sensitive_words}"))
+            system_prompt = await self.prompt_service.get_content_by_key_async("CUSTOMERSERVICE_ANALYSISINTENT_PROMPT")
+            if not system_prompt:
+                system_prompt = "你是一个智能客服助手，请分析用户的意图并提取关键信息。"
+            
+            messages.append(InputMessage(ChatRoleType.SYSTEM, system_prompt))
+            messages.append(InputMessage(ChatRoleType.SYSTEM, f"敏感词包括：{self.sensitive_words}"))
             
             # 添加历史记录，帮助AI更好地理解上下文
             if history and len(history) > 0:
-                history_content = "###下面是对话历史信息\n"
-                
+                messages.append(InputMessage(ChatRoleType.USER, "###下面是对话历史信息"))
+                history_text = ""
                 for item in history:
-                    if item['role'] == ChatRoleType.USER:
-                        history_content += f"用户:{item['content']}\n"
-                    elif item['role'] == ChatRoleType.ASSISTANT:
-                        msg = f"客服:{item['content']}"
-                        if item.get('intent') and item.get('callDatas'):
-                            msg += f" [此回复通过工具查询，涉及的实体ID: {item['callDatas']}]"
-                        history_content += msg + "\n"
-                
-                messages.append(InputMessage(role=ChatRoleType.USER, content=history_content))
+                    if item.role == ChatRoleType.USER:
+                        history_text += f"用户:{item.content}\n"
+                    elif item.role == ChatRoleType.ASSISTANT:
+                        history_msg = f"客服:{item.content}"
+                        if item.intent and item.call_datas:
+                            history_msg += f" [此回复通过工具查询，涉及的实体ID: {item.call_datas}]"
+                        history_text += f"{history_msg}\n"
+                messages.append(InputMessage(ChatRoleType.USER, history_text))
             
-            # 添加当前问题
-            messages.append(InputMessage(role=ChatRoleType.USER, content=f"###用户当前问题：{message}"))
+            # 添加当前用户消息
+            messages.append(InputMessage(ChatRoleType.USER, f"###用户当前问题：{message}"))
             
-            # 调用AI服务
+            # 调用AI服务分析
             response = await self.ai_service.chat_completion_async(messages)
             
             # 解析结果
             try:
-                result_dto = IntentRecognitionResultDto(**json.loads(response))
-                return result_dto
-            except Exception as ex:
-                logger.error(f"解析意图识别结果JSON失败: {response}", exc_info=ex)
-                
+                result = json.loads(response)
+                return IntentRecognitionResultDto(**result)
+            except json.JSONDecodeError:
+                self.logger.error("解析意图识别结果JSON失败")
                 # 如果解析失败，返回一个默认的结果
                 return IntentRecognitionResultDto(
                     intent="GENERAL_QUERY",
                     context="",
                     id_datas=None
                 )
-                
         except Exception as ex:
-            logger.error("分析用户意图失败", exc_info=ex)
-            raise
-
+            self.logger.error(f"分析用户意图失败, 错误: {str(ex)}")
+            # 返回一个默认的结果
+            return IntentRecognitionResultDto(
+                intent="GENERAL_QUERY",
+                context="",
+                id_datas=None
+            )
+    
     async def analyze_image_async(self, image_url: str) -> ImageAnalysisResultDto:
         """
         分析图片内容
@@ -125,23 +141,27 @@ class ChatAIService:
             # 构建消息列表
             messages = []
             
-            # 系统提示词
-            system_prompt = await self.prompt_template_service.get_content_by_key_async("CUSTOMERSERVICE_ANALYZEIMAGE_PROMPT")
-            messages.append(InputMessage(role=ChatRoleType.SYSTEM, content=system_prompt))
+            # 系统提示词  
+            system_prompt = await self.prompt_service.get_content_by_key_async("CUSTOMERSERVICE_ANALYZEIMAGE_PROMPT")
+            if not system_prompt:
+                system_prompt = "请分析图片内容，提供详细描述和标签。"
+                
+            messages.append(InputMessage(ChatRoleType.SYSTEM, system_prompt))
             
             # 发送图片给模型
-            messages.append(InputMessage.from_text_and_image_urls(
-                role=ChatRoleType.USER,
-                text="请描述图片.",
-                image_urls=[image_url]
+            messages.append(InputImageMessage(
+                ChatRoleType.USER,
+                "请描述图片.",
+                [image_url]
             ))
-        # 调用AI服务分析图片内容
+            
+            # 调用AI服务分析图片内容
             response = await self.ai_service.chat_completion_async(messages)
             
             try:
                 # 尝试解析AI返回的JSON结果
-                result = ImageAnalysisResultDto(**json.loads(response))
-                return result
+                result = json.loads(response)
+                return ImageAnalysisResultDto(**result)
             except json.JSONDecodeError:
                 # 如果解析失败，构造一个简单的结果对象
                 return ImageAnalysisResultDto(
@@ -149,14 +169,14 @@ class ChatAIService:
                     tags=[]
                 )
         except Exception as ex:
-            logger.error("分析图片内容失败", exc_info=ex)
+            self.logger.error(f"分析图片内容失败, 错误: {str(ex)}")
             raise
-
+    
     async def generate_reply_async(
-        self, 
-        query: str, 
-        history: List[Dict[str, Any]], 
-        intent: str, 
+        self,
+        query: str,
+        history: List[ChatHistoryDto],
+        intent: str,
         context: Optional[str] = None
     ) -> str:
         """
@@ -175,11 +195,14 @@ class ChatAIService:
             messages = []
             
             # 添加回复提示词
-            system_prompt = await self.prompt_template_service.get_content_by_key_async("CUSTOMERSERVICE_REPLY_PROMPT")
-            messages.append(InputMessage(role=ChatRoleType.SYSTEM, content=system_prompt))
+            system_prompt = await self.prompt_service.get_content_by_key_async("CUSTOMERSERVICE_REPLY_PROMPT")
+            if not system_prompt:
+                system_prompt = "你是一个智能客服助手，请基于提供的知识回答用户的问题。"
+                
+            messages.append(InputMessage(ChatRoleType.SYSTEM, system_prompt))
             
             # 添加敏感词
-            messages.append(InputMessage(role=ChatRoleType.SYSTEM, content=f"敏感词包括：{self.sensitive_words}"))
+            messages.append(InputMessage(ChatRoleType.SYSTEM, f"敏感词包括：{self.sensitive_words}"))
             
             # 添加知识库知识的限定
             knowledge_prompt = ""
@@ -188,24 +211,25 @@ class ChatAIService:
                 knowledge_prompt += context
             else:
                 # 如果没有知识库信息，添加额外警告
-                knowledge_prompt = await self.prompt_template_service.get_content_by_key_async("CUSTOMERSERVICE_REPLY_NOKNOWLEDGE_PROMPT")
-                
-            messages.append(InputMessage(role=ChatRoleType.SYSTEM, content=knowledge_prompt))
+                knowledge_prompt = await self.prompt_service.get_content_by_key_async("CUSTOMERSERVICE_REPLY_NOKNOWLEDGE_PROMPT")
+                if not knowledge_prompt:
+                    knowledge_prompt = "注意：我没有查询到相关的知识库信息，以下回答基于我的通用知识。"
+                    
+            messages.append(InputMessage(ChatRoleType.SYSTEM, knowledge_prompt))
             
             # 添加历史对话
             if history and len(history) > 0:
                 for item in history:
-                    if item['role'] == ChatRoleType.USER:
-                        messages.append(InputMessage(role=ChatRoleType.USER, content=item['content']))
-                    elif item['role'] == ChatRoleType.ASSISTANT:
-                        messages.append(InputMessage(role=ChatRoleType.ASSISTANT, content=item['content']))
+                    if item.role == ChatRoleType.USER:
+                        messages.append(InputMessage(ChatRoleType.USER, item.content))
+                    elif item.role == ChatRoleType.ASSISTANT:
+                        messages.append(InputMessage(ChatRoleType.ASSISTANT, item.content))
             
             # 添加用户查询
-            messages.append(InputMessage(role=ChatRoleType.USER, content=query))
+            messages.append(InputMessage(ChatRoleType.USER, query))
             
             # 调用AI服务生成回复
             return await self.ai_service.chat_completion_async(messages)
-            
         except Exception as ex:
-            logger.error("生成AI回复失败", exc_info=ex)
+            self.logger.error(f"生成AI回复失败, 错误: {str(ex)}")
             raise
