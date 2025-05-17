@@ -48,7 +48,7 @@ class TaskRepository:
             
             return task.id
         except Exception as ex:
-            self.logger.error(f"创建生成任务失败: {str(ex)}")
+            print(f"创建生成任务失败: {str(ex)}")
             raise
     
     async def update_task_status_async(
@@ -88,7 +88,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return result.rowcount > 0
         except Exception as ex:
-            self.logger.error(f"更新任务状态失败，任务ID：{id}: {str(ex)}")
+            print(f"更新任务状态失败，任务ID：{id}: {str(ex)}")
             raise
     
     async def get_task_async(self, id: int) -> Optional[GenerationTask]:
@@ -106,7 +106,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return result.scalars().first()
         except Exception as ex:
-            self.logger.error(f"获取任务详情失败，任务ID：{id}: {str(ex)}")
+            print(f"获取任务详情失败，任务ID：{id}: {str(ex)}")
             raise
     
     async def get_user_tasks_async(
@@ -152,7 +152,7 @@ class TaskRepository:
             
             return items, total_count
         except Exception as ex:
-            self.logger.error(f"获取用户任务列表失败，用户ID：{user_id}: {str(ex)}")
+            print(f"获取用户任务列表失败，用户ID：{user_id}: {str(ex)}")
             raise
     
     async def get_pending_tasks_async(self, limit: int = 10) -> List[GenerationTask]:
@@ -175,7 +175,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取待处理任务列表失败: {str(ex)}")
+            print(f"获取待处理任务列表失败: {str(ex)}")
             raise
     
     async def add_task_platform_async(self, task_platform: GenerationTaskPlatform) -> int:
@@ -200,7 +200,7 @@ class TaskRepository:
             
             return task_platform.id
         except Exception as ex:
-            self.logger.error(f"添加任务平台失败，任务ID：{task_platform.task_id}, 平台ID：{task_platform.platform_id}: {str(ex)}")
+            print(f"添加任务平台失败，任务ID：{task_platform.task_id}, 平台ID：{task_platform.platform_id}: {str(ex)}")
             raise
     
     async def update_task_platform_status_async(self, id: int, status: int) -> bool:
@@ -225,7 +225,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return result.rowcount > 0
         except Exception as ex:
-            self.logger.error(f"更新任务平台状态失败，任务平台ID：{id}: {str(ex)}")
+            print(f"更新任务平台状态失败，任务平台ID：{id}: {str(ex)}")
             raise
     
     async def get_task_platforms_async(self, task_id: int) -> List[GenerationTaskPlatform]:
@@ -246,7 +246,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取任务平台列表失败，任务ID：{task_id}: {str(ex)}")
+            print(f"获取任务平台列表失败，任务ID：{task_id}: {str(ex)}")
             raise
     
     async def add_task_image_async(self, task_image: GenerationTaskImage) -> int:
@@ -270,7 +270,7 @@ class TaskRepository:
             
             return task_image.id
         except Exception as ex:
-            self.logger.error(f"添加任务图片失败，任务ID：{task_image.task_id}: {str(ex)}")
+            print(f"添加任务图片失败，任务ID：{task_image.task_id}: {str(ex)}")
             raise
     
     async def update_task_image_description_async(self, id: int, description: str) -> bool:
@@ -295,7 +295,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return result.rowcount > 0
         except Exception as ex:
-            self.logger.error(f"更新任务图片描述失败，任务图片ID：{id}: {str(ex)}")
+            print(f"更新任务图片描述失败，任务图片ID：{id}: {str(ex)}")
             raise
     
     async def get_task_images_async(self, task_id: int) -> List[GenerationTaskImage]:
@@ -316,7 +316,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取任务图片列表失败，任务ID：{task_id}: {str(ex)}")
+            print(f"获取任务图片列表失败，任务ID：{task_id}: {str(ex)}")
             raise
     
     async def add_generated_content_async(self, generated_content: GeneratedContent) -> int:
@@ -340,7 +340,7 @@ class TaskRepository:
             
             return generated_content.id
         except Exception as ex:
-            self.logger.error(f"添加生成内容失败，任务ID：{generated_content.task_id}, 平台ID：{generated_content.platform_id}: {str(ex)}")
+            print(f"添加生成内容失败，任务ID：{generated_content.task_id}, 平台ID：{generated_content.platform_id}: {str(ex)}")
             raise
     
     async def add_generated_contents_async(self, generated_contents: List[GeneratedContent]) -> bool:
@@ -367,7 +367,7 @@ class TaskRepository:
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"批量添加生成内容失败: {str(ex)}")
+            print(f"批量添加生成内容失败: {str(ex)}")
             raise
     
     async def get_task_generated_contents_async(self, task_id: int) -> List[GeneratedContent]:
@@ -391,7 +391,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取任务生成内容列表失败，任务ID：{task_id}: {str(ex)}")
+            print(f"获取任务生成内容列表失败，任务ID：{task_id}: {str(ex)}")
             raise
     
     async def get_task_platform_generated_contents_async(self, task_platform_id: int) -> List[GeneratedContent]:
@@ -414,7 +414,7 @@ class TaskRepository:
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取任务平台生成内容列表失败，任务平台ID：{task_platform_id}: {str(ex)}")
+            print(f"获取任务平台生成内容列表失败，任务平台ID：{task_platform_id}: {str(ex)}")
             raise
 
 
@@ -466,7 +466,7 @@ class PlatformService:
                 for p in platforms
             ]
         except Exception as ex:
-            self.logger.error(f"获取所有平台失败: {str(ex)}")
+            print(f"获取所有平台失败: {str(ex)}")
             raise
     
     async def get_platform_prompts_async(self, platform_id: int) -> List[PlatformPromptDto]:
@@ -492,7 +492,7 @@ class PlatformService:
                 for p in prompts
             ]
         except Exception as ex:
-            self.logger.error(f"获取平台模板列表失败，平台ID：{platform_id}: {str(ex)}")
+            print(f"获取平台模板列表失败，平台ID：{platform_id}: {str(ex)}")
             raise
     
     async def get_user_prompts_async(self, user_id: int, platform_id: Optional[int] = None) -> List[UserPromptDto]:
@@ -526,7 +526,7 @@ class PlatformService:
                 for p in user_prompts
             ]
         except Exception as ex:
-            self.logger.error(f"获取用户平台模板列表失败，用户ID：{user_id}: {str(ex)}")
+            print(f"获取用户平台模板列表失败，用户ID：{user_id}: {str(ex)}")
             raise
     
     async def get_user_prompt_async(self, user_id: int, prompt_id: int) -> UserPromptDto:
@@ -561,7 +561,7 @@ class PlatformService:
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"获取用户模板详情失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
+            print(f"获取用户模板详情失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
             raise
     
     async def add_user_prompt_async(self, user_id: int, request: AddUserPromptRequestDto) -> int:
@@ -593,7 +593,7 @@ class PlatformService:
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"添加用户模板失败，用户ID：{user_id}: {str(ex)}")
+            print(f"添加用户模板失败，用户ID：{user_id}: {str(ex)}")
             raise
     
     async def update_user_prompt_async(self, user_id: int, request: UpdateUserPromptRequestDto) -> bool:
@@ -621,7 +621,7 @@ class PlatformService:
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"更新用户模板失败，用户ID：{user_id}, 模板ID：{request.id}: {str(ex)}")
+            print(f"更新用户模板失败，用户ID：{user_id}, 模板ID：{request.id}: {str(ex)}")
             raise
     
     async def delete_user_prompt_async(self, user_id: int, prompt_id: int) -> bool:
@@ -638,6 +638,6 @@ class PlatformService:
         try:
             return await self.platform_repository.delete_user_prompt_async(prompt_id, user_id)
         except Exception as ex:
-            self.logger.error(f"删除用户模板失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
+            print(f"删除用户模板失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
             raise
 

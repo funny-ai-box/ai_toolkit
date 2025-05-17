@@ -75,7 +75,7 @@ class PrototypeMessageService:
             if isinstance(ex, ForbiddenException):
                 raise
             
-            self.logger.error(f"获取会话消息失败，会话ID: {session_id}: {str(ex)}")
+            print(f"获取会话消息失败，会话ID: {session_id}: {str(ex)}")
             raise BusinessException(f"获取会话消息失败: {str(ex)}")
     
     async def get_session_messages_paged_async(
@@ -132,7 +132,7 @@ class PrototypeMessageService:
             if isinstance(ex, ForbiddenException):
                 raise
             
-            self.logger.error(f"分页获取会话消息失败，会话ID: {request.session_id}: {str(ex)}")
+            print(f"分页获取会话消息失败，会话ID: {request.session_id}: {str(ex)}")
             raise BusinessException(f"获取会话消息失败: {str(ex)}")
     
     def _get_message_type_description(self, message_type: PrototypeMessageType) -> str:

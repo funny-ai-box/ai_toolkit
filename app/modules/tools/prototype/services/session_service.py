@@ -89,7 +89,7 @@ class PrototypeSessionService:
             if isinstance(ex, BusinessException):
                 raise
             
-            self.logger.error(f"创建会话失败: {str(ex)}")
+            print(f"创建会话失败: {str(ex)}")
             raise BusinessException(f"创建会话失败: {str(ex)}")
     
     async def get_session_async(self, user_id: int, request: GetSessionDetailRequestDto) -> SessionDetailDto:
@@ -151,7 +151,7 @@ class PrototypeSessionService:
             if isinstance(ex, NotFoundException):
                 raise
             
-            self.logger.error(f"获取会话详情失败，ID: {request.id}: {str(ex)}")
+            print(f"获取会话详情失败，ID: {request.id}: {str(ex)}")
             raise BusinessException(f"获取会话详情失败: {str(ex)}")
     
     async def get_user_sessions_async(
@@ -209,7 +209,7 @@ class PrototypeSessionService:
             return result
             
         except Exception as ex:
-            self.logger.error(f"获取用户会话列表失败: {str(ex)}")
+            print(f"获取用户会话列表失败: {str(ex)}")
             raise BusinessException(f"获取会话列表失败: {str(ex)}")
     
     async def update_session_async(self, user_id: int, request: UpdateSessionRequestDto) -> bool:
@@ -238,7 +238,7 @@ class PrototypeSessionService:
             if isinstance(ex, NotFoundException):
                 raise
             
-            self.logger.error(f"更新会话信息失败，ID: {request.id}: {str(ex)}")
+            print(f"更新会话信息失败，ID: {request.id}: {str(ex)}")
             raise BusinessException(f"更新会话信息失败: {str(ex)}")
     
     async def delete_session_async(self, user_id: int, session_id: int) -> bool:
@@ -268,7 +268,7 @@ class PrototypeSessionService:
             if isinstance(ex, NotFoundException):
                 raise
             
-            self.logger.error(f"删除会话失败，ID: {session_id}: {str(ex)}")
+            print(f"删除会话失败，ID: {session_id}: {str(ex)}")
             raise BusinessException(f"删除会话失败: {str(ex)}")
     
     def _get_session_status_description(self, status: PrototypeSessionStatus) -> str:

@@ -61,9 +61,9 @@ class ChatService:
         self.prompt_template_service = prompt_template_service
         
         # 从配置加载聊天设置
-        self.max_context_messages = settings.pkb_chat_max_context_messages or 10
-        self.max_vector_search_results = settings.pkb_chat_max_vector_search_results or 5
-        self.min_vector_score = settings.pkb_chat_min_vector_score or 0.7
+        self.max_context_messages = settings.PKB_CHAT_MAX_CONTEXT_MESSAGES or 10
+        self.max_vector_search_results = settings.PKB_CHAT_MAX_VECTOR_SEARCH_RESULTS or 5
+        self.min_vector_score = settings.PKB_CHAT_MIN_VECTOR_SCORE or 0.7
 
     async def create_session_async(
         self, user_id: int, document_id: int, session_name: str, prompt: Optional[str] = None

@@ -61,7 +61,7 @@ class ProductService(IProductService):
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"获取商品详情失败，ID: {id}，错误: {str(ex)}")
+            print(f"获取商品详情失败，ID: {id}，错误: {str(ex)}")
             raise
     
     async def get_product_by_code_async(self, user_id: int, code: str) -> ProductDetailDto:
@@ -84,7 +84,7 @@ class ProductService(IProductService):
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"根据编码获取商品失败，编码: {code}，错误: {str(ex)}")
+            print(f"根据编码获取商品失败，编码: {code}，错误: {str(ex)}")
             raise
     
     async def get_products_async(self, user_id: int, request: ProductListRequestDto) -> PagedResultDto[ProductListItemDto]:
@@ -116,7 +116,7 @@ class ProductService(IProductService):
             
             return result
         except Exception as ex:
-            self.logger.error(f"分页获取商品列表失败，用户ID: {user_id}，错误: {str(ex)}")
+            print(f"分页获取商品列表失败，用户ID: {user_id}，错误: {str(ex)}")
             raise
     
     async def search_products_async(self, user_id: int, request: ProductSearchRequestDto) -> PagedResultDto[ProductListItemDto]:
@@ -148,7 +148,7 @@ class ProductService(IProductService):
             
             return result
         except Exception as ex:
-            self.logger.error(f"搜索商品失败，关键词: {request.keyword}，错误: {str(ex)}")
+            print(f"搜索商品失败，关键词: {request.keyword}，错误: {str(ex)}")
             raise
     
     async def get_hot_products_async(self, user_id: int, top: int) -> List[ProductListItemDto]:
@@ -166,7 +166,7 @@ class ProductService(IProductService):
             items = await self.product_repository.get_hot_products_async(user_id, top)
             return [self._map_to_product_list_item_dto(item) for item in items]
         except Exception as ex:
-            self.logger.error(f"获取热门商品失败，用户ID: {user_id}，错误: {str(ex)}")
+            print(f"获取热门商品失败，用户ID: {user_id}，错误: {str(ex)}")
             raise
     
     async def create_product_async(self, user_id: int, request: ProductCreateDto, images: Optional[List[UploadFile]] = None) -> int:
@@ -210,7 +210,7 @@ class ProductService(IProductService):
         except ValidationException:
             raise
         except Exception as ex:
-            self.logger.error(f"创建商品失败，错误: {str(ex)}")
+            print(f"创建商品失败，错误: {str(ex)}")
             raise
     
     async def update_product_async(self, user_id: int, request: ProductUpdateDto) -> bool:
@@ -263,7 +263,7 @@ class ProductService(IProductService):
         except ValidationException:
             raise
         except Exception as ex:
-            self.logger.error(f"更新商品失败，ID: {request.id}，错误: {str(ex)}")
+            print(f"更新商品失败，ID: {request.id}，错误: {str(ex)}")
             raise
     
     async def delete_product_async(self, user_id: int, id: int) -> bool:
@@ -288,7 +288,7 @@ class ProductService(IProductService):
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"删除商品失败，ID: {id}，错误: {str(ex)}")
+            print(f"删除商品失败，ID: {id}，错误: {str(ex)}")
             raise
     
     async def update_product_status_async(self, id: int, status: int) -> bool:
@@ -314,7 +314,7 @@ class ProductService(IProductService):
         except NotFoundException:
             raise
         except Exception as ex:
-            self.logger.error(f"更新商品状态失败，ID: {id}，状态: {status}，错误: {str(ex)}")
+            print(f"更新商品状态失败，ID: {id}，状态: {status}，错误: {str(ex)}")
             raise
     
     async def upload_product_image_async(self, user_id: int, product_id: int, image: UploadFile) -> ProductImageDto:
@@ -368,7 +368,7 @@ class ProductService(IProductService):
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"上传商品图片失败，商品ID: {product_id}，错误: {str(ex)}")
+            print(f"上传商品图片失败，商品ID: {product_id}，错误: {str(ex)}")
             raise
     
     async def delete_product_image_async(self, user_id: int, product_id: int, image_id: int) -> bool:
@@ -393,7 +393,7 @@ class ProductService(IProductService):
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"删除商品图片失败，图片ID: {image_id}，错误: {str(ex)}")
+            print(f"删除商品图片失败，图片ID: {image_id}，错误: {str(ex)}")
             raise
     
     async def _upload_product_images_async(self, product_id: int, images: List[UploadFile]) -> bool:
@@ -438,7 +438,7 @@ class ProductService(IProductService):
             
             return True
         except Exception as ex:
-            self.logger.error(f"批量上传商品图片失败，商品ID: {product_id}，错误: {str(ex)}")
+            print(f"批量上传商品图片失败，商品ID: {product_id}，错误: {str(ex)}")
             raise
     
     def _map_to_product_detail_dto(self, product: Product) -> ProductDetailDto:

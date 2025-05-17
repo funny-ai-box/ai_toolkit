@@ -140,7 +140,7 @@ class AIChatService:
             if isinstance(ex, ForbiddenException):
                   raise
             
-            self.logger.error(f"发送AI对话消息失败: {str(ex)}")
+            print(f"发送AI对话消息失败: {str(ex)}")
             raise BusinessException(f"发送AI对话消息失败: {str(ex)}")
     
     async def upload_reference_image_async(
@@ -204,7 +204,7 @@ class AIChatService:
             if isinstance(ex, ForbiddenException):
                 raise
             
-            self.logger.error(f"上传参考图片失败: {str(ex)}")
+            print(f"上传参考图片失败: {str(ex)}")
             raise BusinessException(f"上传参考图片失败: {str(ex)}")
     
     async def _ai_generate_flow_async(
@@ -272,7 +272,7 @@ class AIChatService:
             elif stage_data.current_stage == CurrentStageType.COMPLETED:
                 await self._deal_stage_completed(session, stage_data, ai_response)
         except Exception as ex:
-            self.logger.error(f"自动处理下一步时出错: {str(ex)}")
+            print(f"自动处理下一步时出错: {str(ex)}")
         
         return ai_message_id, ai_response
     
@@ -669,7 +669,7 @@ class AIChatService:
                         import asyncio
                         asyncio.create_task(self._generate_all_page_async(session.user_id, session.id, structure_obj))
             except Exception as ex:
-                self.logger.error(f"解析页面结构失败: {str(ex)}")
+                print(f"解析页面结构失败: {str(ex)}")
                 await self._add_system_message_async(session.user_id, session.id, f"解析页面结构失败: {str(ex)}")
     
     async def _deal_stage_generating(
@@ -745,7 +745,7 @@ class AIChatService:
                             f"页面 {stage_data.modified_page} 的已修改"
                         )
             except Exception as ex:
-                self.logger.error(f"保存修改的页面时出错: {str(ex)}")
+                print(f"保存修改的页面时出错: {str(ex)}")
                 await self._add_system_message_async(session.user_id, session.id, f"保存修改的页面时出错: {str(ex)}")
     
     async def _deal_stage_completed(
@@ -802,7 +802,7 @@ class AIChatService:
             
             return True
         except Exception as ex:
-            self.logger.error(f"生成页面时出错: {str(ex)}")
+            print(f"生成页面时出错: {str(ex)}")
             await self._add_system_message_async(user_id, session_id, f"生成页面时出错: {str(ex)}")
             return False
         finally:

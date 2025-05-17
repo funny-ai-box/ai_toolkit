@@ -98,7 +98,7 @@ class PrototypePageService:
             if isinstance(ex, (NotFoundException, ForbiddenException)):
                 raise
             
-            self.logger.error(f"获取页面详情失败，ID: {page_id}: {str(ex)}")
+            print(f"获取页面详情失败，ID: {page_id}: {str(ex)}")
             raise BusinessException(f"获取页面详情失败: {str(ex)}")
     
     async def get_session_pages_async(self, user_id: int, session_id: int) -> List[PageDetailDto]:
@@ -143,7 +143,7 @@ class PrototypePageService:
             if isinstance(ex, ForbiddenException):
                 raise
             
-            self.logger.error(f"获取会话页面列表失败，会话ID: {session_id}: {str(ex)}")
+            print(f"获取会话页面列表失败，会话ID: {session_id}: {str(ex)}")
             raise BusinessException(f"获取会话页面列表失败: {str(ex)}")
     
     def _get_page_status_description(self, status: PrototypePageStatus) -> str:

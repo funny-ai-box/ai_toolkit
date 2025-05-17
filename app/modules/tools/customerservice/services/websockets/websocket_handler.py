@@ -92,7 +92,7 @@ class WebSocketHandler:
         except WebSocketDisconnect:
             self.logger.info(f"WebSocket连接已断开, ConnectionId: {connection_id}")
         except Exception as ex:
-            self.logger.error(f"WebSocket连接出错, ConnectionId: {connection_id}, 错误: {str(ex)}")
+            print(f"WebSocket连接出错, ConnectionId: {connection_id}, 错误: {str(ex)}")
         finally:
             # 关闭连接
             await self._disconnect(connection_id)
@@ -141,7 +141,7 @@ class WebSocketHandler:
             except json.JSONDecodeError:
                 await self._send_error(connection_id, "无法解析消息内容")
             except Exception as ex:
-                self.logger.error(f"处理WebSocket消息时发生错误: {str(ex)}")
+                print(f"处理WebSocket消息时发生错误: {str(ex)}")
                 await self._send_error(connection_id, "处理消息时发生错误")
     
     async def _handle_join_session(self, connection_id: str, data: Any) -> None:
@@ -186,7 +186,7 @@ class WebSocketHandler:
         except (ValueError, TypeError, KeyError):
             await self._send_error(connection_id, "无效的会话ID")
         except Exception as ex:
-            self.logger.error(f"处理加入会话请求时发生错误: {str(ex)}")
+            print(f"处理加入会话请求时发生错误: {str(ex)}")
             await self._send_error(connection_id, "处理加入会话请求时发生错误")
     
     async def _handle_leave_session(self, connection_id: str, data: Any) -> None:
@@ -225,7 +225,7 @@ class WebSocketHandler:
             
             self.logger.info(f"连接 {connection_id} 离开会话 {session_id}")
         except Exception as ex:
-            self.logger.error(f"处理离开会话请求时发生错误: {str(ex)}")
+            print(f"处理离开会话请求时发生错误: {str(ex)}")
             await self._send_error(connection_id, "处理离开会话请求时发生错误")
     
     async def _handle_chat_message(self, connection_id: str, data: Any) -> None:
@@ -290,7 +290,7 @@ class WebSocketHandler:
                 # 发送失败，通知发送者
                 await self._send_error(connection_id, result.error_message or "发送消息失败")
         except Exception as ex:
-            self.logger.error(f"处理聊天消息时发生错误: {str(ex)}")
+            print(f"处理聊天消息时发生错误: {str(ex)}")
             await self._send_error(connection_id, "处理聊天消息时发生错误")
     
     async def _send_message(self, connection_id: str, message: WebSocketMessage) -> None:
@@ -315,7 +315,7 @@ class WebSocketHandler:
             # 发送消息
             await connection.websocket.send_text(message_json)
         except Exception as ex:
-            self.logger.error(f"发送消息失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
+            print(f"发送消息失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             # 出错时尝试断开连接
             await self._disconnect(connection_id)
     
@@ -381,7 +381,7 @@ class WebSocketHandler:
             
             self.logger.info(f"WebSocket连接已断开, ConnectionId: {connection_id}")
         except Exception as ex:
-            self.logger.error(f"关闭WebSocket连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
+            print(f"关闭WebSocket连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
     
     async def cleanup_expired_connections(self, timeout_minutes: int = 30) -> int:
         """

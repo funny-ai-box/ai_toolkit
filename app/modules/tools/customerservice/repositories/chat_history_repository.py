@@ -39,7 +39,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             result = await self.db.execute(query)
             return result.scalars().first()
         except Exception as ex:
-            self.logger.error(f"获取聊天记录失败, ID: {id}, 错误: {str(ex)}")
+            print(f"获取聊天记录失败, ID: {id}, 错误: {str(ex)}")
             raise
     
     async def get_session_history_async(self, session_id: int, limit: int = 20) -> List[ChatHistory]:
@@ -61,7 +61,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取会话聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"获取会话聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise
     
     async def get_session_history_paginated_async(
@@ -105,7 +105,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             
             return sorted_items, total_count
         except Exception as ex:
-            self.logger.error(f"分页获取会话聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"分页获取会话聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise
     
     async def get_recent_history_async(self, session_id: int, count: int = 10) -> List[ChatHistory]:
@@ -130,7 +130,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             # 返回结果按照时间升序排序
             return sorted(items, key=lambda x: x.create_date)
         except Exception as ex:
-            self.logger.error(f"获取最近聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"获取最近聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise
     
     async def add_async(self, history: ChatHistory) -> bool:
@@ -153,7 +153,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"添加聊天记录失败, 错误: {str(ex)}")
+            print(f"添加聊天记录失败, 错误: {str(ex)}")
             raise
     
     async def add_range_async(self, history_list: List[ChatHistory]) -> bool:
@@ -177,7 +177,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"批量添加聊天记录失败, 错误: {str(ex)}")
+            print(f"批量添加聊天记录失败, 错误: {str(ex)}")
             raise
     
     async def update_async(self, history: ChatHistory) -> bool:
@@ -196,7 +196,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"更新聊天记录失败, ID: {history.id}, 错误: {str(ex)}")
+            print(f"更新聊天记录失败, ID: {history.id}, 错误: {str(ex)}")
             raise
     
     async def delete_async(self, id: int) -> bool:
@@ -218,7 +218,7 @@ class ChatHistoryRepository(IChatHistoryRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"删除聊天记录失败, ID: {id}, 错误: {str(ex)}")
+            print(f"删除聊天记录失败, ID: {id}, 错误: {str(ex)}")
             raise
     
     async def delete_session_history_async(self, session_id: int) -> bool:
@@ -242,5 +242,5 @@ class ChatHistoryRepository(IChatHistoryRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"删除会话所有聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"删除会话所有聊天记录失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise

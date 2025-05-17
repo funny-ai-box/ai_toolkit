@@ -111,7 +111,7 @@ class ChatAIService:
                 result = json.loads(response)
                 return IntentRecognitionResultDto(**result)
             except json.JSONDecodeError:
-                self.logger.error("解析意图识别结果JSON失败")
+                print("解析意图识别结果JSON失败")
                 # 如果解析失败，返回一个默认的结果
                 return IntentRecognitionResultDto(
                     intent="GENERAL_QUERY",
@@ -119,7 +119,7 @@ class ChatAIService:
                     id_datas=None
                 )
         except Exception as ex:
-            self.logger.error(f"分析用户意图失败, 错误: {str(ex)}")
+            print(f"分析用户意图失败, 错误: {str(ex)}")
             # 返回一个默认的结果
             return IntentRecognitionResultDto(
                 intent="GENERAL_QUERY",
@@ -169,7 +169,7 @@ class ChatAIService:
                     tags=[]
                 )
         except Exception as ex:
-            self.logger.error(f"分析图片内容失败, 错误: {str(ex)}")
+            print(f"分析图片内容失败, 错误: {str(ex)}")
             raise
     
     async def generate_reply_async(
@@ -231,5 +231,5 @@ class ChatAIService:
             # 调用AI服务生成回复
             return await self.ai_service.chat_completion_async(messages)
         except Exception as ex:
-            self.logger.error(f"生成AI回复失败, 错误: {str(ex)}")
+            print(f"生成AI回复失败, 错误: {str(ex)}")
             raise

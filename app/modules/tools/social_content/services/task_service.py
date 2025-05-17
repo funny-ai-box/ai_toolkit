@@ -96,7 +96,7 @@ class TaskService:
         except BusinessException: # Re-raise known business exceptions
             raise
         except Exception as ex:
-            self.logger.error(f"创建任务失败，用户ID：{user_id}: {str(ex)}", exc_info=True)
+            print(f"创建任务失败，用户ID：{user_id}: {str(ex)}", exc_info=True)
             raise BusinessException(f"创建任务时发生内部错误: {str(ex)}")
 
 
@@ -322,7 +322,7 @@ class TaskService:
                     # To cancel the whole task, re-raise CancelledError
                     raise
                 except Exception as ex_platform:
-                    self.logger.error(
+                    print(
                         f"处理任务平台失败，任务ID：{task_id}, 平台ID：{tp_entity.platform_id}: {str(ex_platform)}", exc_info=True
                     )
                     await self.task_repository.update_task_platform_status_async(
@@ -354,7 +354,7 @@ class TaskService:
             )
             return False # Or re-raise if caller needs to know it was cancelled
         except Exception as ex_task:
-            self.logger.error(f"处理任务失败，任务ID：{task_id}: {str(ex_task)}", exc_info=True)
+            print(f"处理任务失败，任务ID：{task_id}: {str(ex_task)}", exc_info=True)
             await self.task_repository.update_task_status_async(
                 task_id, GenerationTaskStatus.FAILED, f"处理失败：{str(ex_task)}",
                 task.completion_rate if task else 0.0
@@ -384,7 +384,7 @@ class TaskService:
             # Re-fetch task to get its final state after cancellation attempt.
             # Fallthrough to get_task_async which will show its current (likely FAILED/CANCELLED) state.
         except Exception:
-            self.logger.error(f"流式创建并处理任务过程中发生错误，任务ID：{task.id}", exc_info=True)
+            print(f"流式创建并处理任务过程中发生错误，任务ID：{task.id}", exc_info=True)
             # Status already updated by process_task_async.
             # Fallthrough to get_task_async.
 

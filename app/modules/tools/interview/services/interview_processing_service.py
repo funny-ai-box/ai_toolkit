@@ -71,9 +71,9 @@ class InterviewProcessingService:
                     await self.scenario_service.process_generate_questions_async(scenario.id)
                     self.logger.info(f"面试生成问题处理完成：{scenario.id} - {scenario.name}")
                 except Exception as e:
-                    self.logger.error(f"处理面试生成问题失败：{scenario.id} - {scenario.name}", exc_info=True)
+                    print(f"处理面试生成问题失败：{scenario.id} - {scenario.name}", exc_info=True)
         except Exception as e:
-            self.logger.error("生成面试问题时发生异常", exc_info=True)
+            print("生成面试问题时发生异常", exc_info=True)
     
     @RecurringJob("*/10 * * * * *", "default", "处理评估面试结果")
     async def process_evaluate_session_async(self):
@@ -101,6 +101,6 @@ class InterviewProcessingService:
                     await self.session_service.process_evaluate_session_async(session.id)
                     self.logger.info(f"处理评估面试结果完成：{session.id}")
                 except Exception as e:
-                    self.logger.error(f"处理评估面试结果失败：{session.id}", exc_info=True)
+                    print(f"处理评估面试结果失败：{session.id}", exc_info=True)
         except Exception as e:
-            self.logger.error("处理评估面试结果异常", exc_info=True)
+            print("处理评估面试结果异常", exc_info=True)

@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 # 创建API路由
 router = APIRouter(
-    prefix="/api/survey",
+    prefix="/survey",
     tags=["Survey"],
     responses={404: {"description": "Not found"}}
 )

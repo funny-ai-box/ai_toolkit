@@ -39,7 +39,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             result = await self.db.execute(query)
             return result.scalars().first()
         except Exception as ex:
-            self.logger.error(f"获取聊天连接失败, ID: {id}, 错误: {str(ex)}")
+            print(f"获取聊天连接失败, ID: {id}, 错误: {str(ex)}")
             raise
     
     async def get_by_connection_id_async(self, connection_id: str) -> Optional[ChatConnection]:
@@ -57,7 +57,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             result = await self.db.execute(query)
             return result.scalars().first()
         except Exception as ex:
-            self.logger.error(f"根据连接ID获取聊天连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
+            print(f"根据连接ID获取聊天连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
     
     async def get_session_connections_async(self, session_id: int, active_only: bool = True) -> List[ChatConnection]:
@@ -80,7 +80,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取会话连接失败, 会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"获取会话连接失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise
     
     async def add_async(self, connection: ChatConnection) -> bool:
@@ -104,7 +104,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"添加聊天连接失败, 错误: {str(ex)}")
+            print(f"添加聊天连接失败, 错误: {str(ex)}")
             raise
     
     async def update_async(self, connection: ChatConnection) -> bool:
@@ -123,7 +123,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"更新聊天连接失败, ID: {connection.id}, 错误: {str(ex)}")
+            print(f"更新聊天连接失败, ID: {connection.id}, 错误: {str(ex)}")
             raise
     
     async def update_connection_status_async(self, connection_id: str, is_active: bool) -> bool:
@@ -150,7 +150,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"更新聊天连接状态失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
+            print(f"更新聊天连接状态失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
     
     async def update_last_active_time_async(self, connection_id: str) -> bool:
@@ -176,7 +176,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"更新聊天连接最后活跃时间失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
+            print(f"更新聊天连接最后活跃时间失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
     
     async def delete_async(self, connection_id: str) -> bool:
@@ -198,7 +198,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"删除聊天连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
+            print(f"删除聊天连接失败, ConnectionId: {connection_id}, 错误: {str(ex)}")
             raise
     
     async def delete_session_connections_async(self, session_id: int) -> bool:
@@ -220,7 +220,7 @@ class ChatConnectionRepository(IChatConnectionRepository):
             await self.db.flush()
             return True
         except Exception as ex:
-            self.logger.error(f"删除会话所有连接失败, 会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"删除会话所有连接失败, 会话ID: {session_id}, 错误: {str(ex)}")
             raise
     
     async def cleanup_expired_connections_async(self, expiry_minutes: int = 30) -> int:
@@ -255,5 +255,5 @@ class ChatConnectionRepository(IChatConnectionRepository):
             await self.db.flush()
             return len(connections)
         except Exception as ex:
-            self.logger.error(f"清理过期连接失败, 过期时间: {expiry_minutes}分钟, 错误: {str(ex)}")
+            print(f"清理过期连接失败, 过期时间: {expiry_minutes}分钟, 错误: {str(ex)}")
             raise

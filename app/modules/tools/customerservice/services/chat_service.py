@@ -62,6 +62,7 @@ class ChatService(IChatService):
         self.max_context_messages = int(chat_config.get("MaxContextMessages", 10))
     
     async def create_session_async(self, user_id: int, user_name: str) -> ChatSessionDto:
+        print(f"[DEBUG] 开始创建聊天会话: user_id={user_id}, user_name={user_name}")
         try:
             session = ChatSession(
                 user_id=user_id,
@@ -70,7 +71,9 @@ class ChatService(IChatService):
                 status=ChatSessionStatus.ACTIVE.value
             )
             
-            await self.session_repository.create_async(session)
+            print(f"[DEBUG] 准备调用 session_repository.create_async")
+            result = await self.session_repository.create_async(session)
+            print(f"[DEBUG] session_repository.create_async 执行结果: {result}, session.id={session.id}")
             
             # Add a system welcome message
             welcome_message = ChatHistory(
@@ -79,7 +82,9 @@ class ChatService(IChatService):
                 content=f"您好，{user_name}！我是您的智能客服助手，有什么可以帮您的吗？",
             )
             
-            await self.history_repository.add_async(welcome_message)
+            print(f"[DEBUG] 准备调用 history_repository.add_async 添加欢迎消息")
+            result = await self.history_repository.add_async(welcome_message)
+            print(f"[DEBUG] history_repository.add_async 执行结果: {result}, message.id={welcome_message.id}")
             
             # Build the result - use camelCase field names to match DTO expectations
             result = ChatSessionDto(
@@ -102,9 +107,13 @@ class ChatService(IChatService):
                 ]
             )
             
+            print(f"[DEBUG] 会话创建成功完成: session_id={session.id}, session_key={session.session_key}")
             return result
         except Exception as ex:
-            self.logger.error(f"创建会话失败，用户ID: {user_id}, 用户名: {user_name}, 错误: {str(ex)}")
+            print(f"[ERROR] 创建会话失败，用户ID: {user_id}, 用户名: {user_name}, 错误: {str(ex)}")
+            print(f"[ERROR] 错误类型: {type(ex).__name__}")
+            import traceback
+            print(f"[ERROR] 错误堆栈: {traceback.format_exc()}")
             raise
     async def get_session_async(self, user_id: int, session_id: int) -> Optional[ChatSessionDto]:
         """
@@ -129,7 +138,7 @@ class ChatService(IChatService):
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"获取会话失败，会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"获取会话失败，会话ID: {session_id}, 错误: {str(ex)}")
             raise
     
     async def get_session_by_key_async(self, session_key: str) -> Optional[ChatSessionDto]:
@@ -152,7 +161,7 @@ class ChatService(IChatService):
             
             return self._map_session_to_dto(session, recent_history)
         except Exception as ex:
-            self.logger.error(f"根据会话Key获取会话失败，会话Key: {session_key}, 错误: {str(ex)}")
+            print(f"根据会话Key获取会话失败，会话Key: {session_key}, 错误: {str(ex)}")
             raise
     
     async def get_user_sessions_async(self, user_id: int, request: ChatSessionListRequestDto) -> PagedResultDto[ChatSessionListItemDto]:
@@ -199,7 +208,7 @@ class ChatService(IChatService):
                 total_pages=(total_count + request.page_size - 1) // request.page_size
             )
         except Exception as ex:
-            self.logger.error(f"获取用户会话列表失败，用户ID: {user_id}, 错误: {str(ex)}")
+            print(f"获取用户会话列表失败，用户ID: {user_id}, 错误: {str(ex)}")
             raise
     
     async def end_session_async(self, session_id: int) -> bool:
@@ -220,7 +229,7 @@ class ChatService(IChatService):
             
             return result
         except Exception as ex:
-            self.logger.error(f"结束会话失败，会话ID: {session_id}, 错误: {str(ex)}")
+            print(f"结束会话失败，会话ID: {session_id}, 错误: {str(ex)}")
             raise
     
     async def get_session_history_async(self, user_id: int, request: ChatHistoryListRequestDto) -> PagedResultDto[ChatHistoryDto]:
@@ -266,7 +275,7 @@ class ChatService(IChatService):
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"获取会话历史记录失败，会话ID: {request.session_id}, 错误: {str(ex)}")
+            print(f"获取会话历史记录失败，会话ID: {request.session_id}, 错误: {str(ex)}")
             raise
     
     async def send_message_async(self, user_id: int, request: ChatMessageRequestDto) -> ChatMessageResultDto:
@@ -353,7 +362,7 @@ class ChatService(IChatService):
                 success=True
             )
         except Exception as ex:
-            self.logger.error(f"发送消息失败，会话ID: {request.session_id}，错误: {str(ex)}")
+            print(f"发送消息失败，会话ID: {request.session_id}，错误: {str(ex)}")
             return ChatMessageResultDto(
                 session_id=request.session_id,
                 success=False,
@@ -462,7 +471,7 @@ class ChatService(IChatService):
                 success=True
             )
         except Exception as ex:
-            self.logger.error(f"发送图片消息失败，会话ID: {session_id}，错误: {str(ex)}")
+            print(f"发送图片消息失败，会话ID: {session_id}，错误: {str(ex)}")
             return ChatMessageResultDto(
                 session_id=session_id,
                 success=False,
@@ -492,7 +501,7 @@ class ChatService(IChatService):
             
             return await self.connection_repository.add_async(connection)
         except Exception as ex:
-            self.logger.error(f"建立实时连接失败，会话ID: {session_id}, 连接ID: {connection_id}, 错误: {str(ex)}")
+            print(f"建立实时连接失败，会话ID: {session_id}, 连接ID: {connection_id}, 错误: {str(ex)}")
             raise
     
     async def close_connection_async(self, connection_id: str) -> bool:
@@ -508,7 +517,7 @@ class ChatService(IChatService):
         try:
             return await self.connection_repository.delete_async(connection_id)
         except Exception as ex:
-            self.logger.error(f"关闭实时连接失败，连接ID: {connection_id}, 错误: {str(ex)}")
+            print(f"关闭实时连接失败，连接ID: {connection_id}, 错误: {str(ex)}")
             raise
     
     async def keep_connection_alive_async(self, connection_id: str) -> bool:
@@ -524,7 +533,7 @@ class ChatService(IChatService):
         try:
             return await self.connection_repository.update_last_active_time_async(connection_id)
         except Exception as ex:
-            self.logger.error(f"更新连接活跃状态失败，连接ID: {connection_id}, 错误: {str(ex)}")
+            print(f"更新连接活跃状态失败，连接ID: {connection_id}, 错误: {str(ex)}")
             raise
     
     def _map_session_to_dto(self, session: ChatSession, history: List[ChatHistory]) -> ChatSessionDto:

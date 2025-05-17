@@ -103,7 +103,7 @@ class AIRealTimeService:
         except BusinessException:
             raise
         except Exception as e:
-            self.logger.error(f"创建OpenAI RealTime会话时发生错误: {str(e)}", exc_info=True)
+            print(f"创建OpenAI RealTime会话时发生错误: {str(e)}", exc_info=True)
             raise BusinessException(f"创建OpenAI RealTime会话失败: {str(e)}")
     
     async def _prepare_interview_instructions_async(self, scenario: InterviewScenario, position: JobPosition) -> str:
@@ -236,7 +236,7 @@ class AIRealTimeService:
                 )
                 
                 if response.status_code != 200:
-                    self.logger.error(f"OpenAI RealTime API 错误: {response.text}")
+                    print(f"OpenAI RealTime API 错误: {response.text}")
                     raise BusinessException("创建OpenAI RealTime会话失败", response.status_code)
                 
                 result = response.json()
@@ -256,7 +256,7 @@ class AIRealTimeService:
                 return session_response
                 
         except httpx.RequestError as e:
-            self.logger.error(f"请求OpenAI RealTime API失败: {str(e)}")
+            print(f"请求OpenAI RealTime API失败: {str(e)}")
             raise BusinessException(f"请求OpenAI RealTime API失败: {str(e)}")
     
     def _get_voice_by_gender(self, gender: InterviewerGender) -> str:

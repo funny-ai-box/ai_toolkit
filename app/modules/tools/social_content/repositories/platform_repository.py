@@ -42,7 +42,7 @@ class PlatformRepository:
             result = await self.db.execute(query.order_by(Platform.id))
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取所有平台失败: {str(ex)}")
+            print(f"获取所有平台失败: {str(ex)}")
             raise
     
     async def get_platform_async(self, id: int) -> Optional[Platform]:
@@ -60,7 +60,7 @@ class PlatformRepository:
             result = await self.db.execute(query)
             return result.scalars().first()
         except Exception as ex:
-            self.logger.error(f"获取平台详情失败，平台ID：{id}: {str(ex)}")
+            print(f"获取平台详情失败，平台ID：{id}: {str(ex)}")
             raise
     
     async def get_platform_prompts_async(self, platform_id: int) -> List[PlatformTemplate]:
@@ -81,7 +81,7 @@ class PlatformRepository:
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取平台模板列表失败，平台ID：{platform_id}: {str(ex)}")
+            print(f"获取平台模板列表失败，平台ID：{platform_id}: {str(ex)}")
             raise
     
     async def get_platform_prompt_async(self, id: int) -> Optional[PlatformTemplate]:
@@ -99,7 +99,7 @@ class PlatformRepository:
             result = await self.db.execute(query)
             return result.scalars().first()
         except Exception as ex:
-            self.logger.error(f"获取平台模板详情失败，模板ID：{id}: {str(ex)}")
+            print(f"获取平台模板详情失败，模板ID：{id}: {str(ex)}")
             raise
     
     async def get_user_prompts_async(self, user_id: int, platform_id: Optional[int] = None) -> List[PlatformTemplateUser]:
@@ -126,7 +126,7 @@ class PlatformRepository:
             result = await self.db.execute(query)
             return list(result.scalars().all())
         except Exception as ex:
-            self.logger.error(f"获取用户平台模板列表失败，用户ID：{user_id}: {str(ex)}")
+            print(f"获取用户平台模板列表失败，用户ID：{user_id}: {str(ex)}")
             raise
     
     async def get_user_all_prompts_async(self, user_id: int, platform_id: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -188,7 +188,7 @@ class PlatformRepository:
             
             return result
         except Exception as ex:
-            self.logger.error(f"获取用户合体模板列表失败，用户ID：{user_id}: {str(ex)}")
+            print(f"获取用户合体模板列表失败，用户ID：{user_id}: {str(ex)}")
             raise
     
     async def get_user_prompt_async(self, id: int) -> Optional[PlatformTemplateUser]:
@@ -206,7 +206,7 @@ class PlatformRepository:
             result = await self.db.execute(query)
             return result.scalars().first()
         except Exception as ex:
-            self.logger.error(f"获取用户平台模板详情失败，模板ID：{id}: {str(ex)}")
+            print(f"获取用户平台模板详情失败，模板ID：{id}: {str(ex)}")
             raise
     
     async def add_user_prompt_async(self, user_prompt: PlatformTemplateUser) -> int:
@@ -230,7 +230,7 @@ class PlatformRepository:
             
             return user_prompt.id
         except Exception as ex:
-            self.logger.error(f"添加用户平台模板失败，用户ID：{user_prompt.user_id}, 平台ID：{user_prompt.platform_id}: {str(ex)}")
+            print(f"添加用户平台模板失败，用户ID：{user_prompt.user_id}, 平台ID：{user_prompt.platform_id}: {str(ex)}")
             raise
     
     async def update_user_prompt_async(self, user_prompt: PlatformTemplateUser) -> bool:
@@ -258,7 +258,7 @@ class PlatformRepository:
             result = await self.db.execute(query)
             return result.rowcount > 0
         except Exception as ex:
-            self.logger.error(f"更新用户平台模板失败，模板ID：{user_prompt.id}: {str(ex)}")
+            print(f"更新用户平台模板失败，模板ID：{user_prompt.id}: {str(ex)}")
             raise
     
     async def delete_user_prompt_async(self, id: int, user_id: int) -> bool:
@@ -283,5 +283,5 @@ class PlatformRepository:
             result = await self.db.execute(query)
             return result.rowcount > 0
         except Exception as ex:
-            self.logger.error(f"删除用户平台模板失败，模板ID：{id}, 用户ID：{user_id}: {str(ex)}")
+            print(f"删除用户平台模板失败，模板ID：{id}, 用户ID：{user_id}: {str(ex)}")
             raise

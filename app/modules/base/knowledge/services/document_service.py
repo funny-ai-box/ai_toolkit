@@ -114,7 +114,7 @@ class DocumentService:
             cdn_url = await self.storage_service.upload_async(file_stream, file_key, content_type)
             self.logger.info(f"文件上传成功: URL='{cdn_url}'")
         except Exception as e:
-            self.logger.error(f"上传文件到存储服务失败: {e}", exc_info=True)
+            print(f"上传文件到存储服务失败: {e}", exc_info=True)
             raise BusinessException(f"文件上传失败: {str(e)}") from e
         finally:
              await file.close()
@@ -150,7 +150,7 @@ class DocumentService:
             return document_id
         except Exception as e:
             await self.db.rollback()
-            self.logger.error(f"创建文档记录或触发任务失败: {e}", exc_info=True)
+            print(f"创建文档记录或触发任务失败: {e}")
             if cdn_url and self.storage_service: # 尝试回滚文件上传
                 try: await self.storage_service.delete_async(file_key)
                 except Exception as del_e: logger.error(f"回滚删除文件失败: {file_key} - {del_e}")
@@ -193,7 +193,7 @@ class DocumentService:
             return document_id
         except Exception as e:
             await self.db.rollback()
-            self.logger.error(f"创建网页导入记录或触发任务失败: {e}", exc_info=True)
+            print(f"创建网页导入记录或触发任务失败: {e}", exc_info=True)
             raise BusinessException("导入网页失败") from e
 
     # ... (get_document_async, get_documents_async, get_document_status_async,
@@ -346,11 +346,11 @@ class DocumentService:
                 return True
             else:
                 await self.db.rollback()
-                self.logger.error(f"删除文档主记录失败 (ID: {document_id})，事务已回滚。")
+                print(f"删除文档主记录失败 (ID: {document_id})，事务已回滚。")
                 raise BusinessException("删除文档记录失败")
         except Exception as e:
             await self.db.rollback()
-            self.logger.error(f"提交删除文档事务失败 (ID: {document_id}): {e}", exc_info=True)
+            print(f"提交删除文档事务失败 (ID: {document_id}): {e}", exc_info=True)
             raise BusinessException("删除文档时发生错误") from e
 
 
@@ -407,7 +407,7 @@ class DocumentService:
             # --------------------------------
 
         except Exception as e:
-            self.logger.error(f"[任务执行] 解析文档 {document_id} 失败: {e}", exc_info=True)
+            print(f"[任务执行] 解析文档 {document_id} 失败: {e}", exc_info=True)
             await self.db.rollback()
             message = f"解析失败: {e.message}" if isinstance(e, BusinessException) else f"解析时发生内部错误: {str(e)}"
             await self.document_repository.update_status_async(document_id, DocumentStatus.FAILED, message)
@@ -430,7 +430,7 @@ class DocumentService:
 
         doc_content = await self.document_content_repository.get_document_content_async(document_id)
         if doc_content is None or not doc_content.content:
-            self.logger.error(f"文档 {document_id} 内容为空，无法向量化。")
+            print(f"文档 {document_id} 内容为空，无法向量化。")
             await self.document_repository.update_vector_status_async(document_id, DocumentStatus.FAILED, "文档内容为空")
             await self.db.commit()
             raise BusinessException("文档内容为空，无法向量化")
@@ -477,7 +477,7 @@ class DocumentService:
             self.logger.info(f"[任务执行] 文档 {document_id} 向量化成功。")
 
         except Exception as e:
-            self.logger.error(f"[任务执行] 向量化文档 {document_id} 失败: {e}", exc_info=True)
+            print(f"[任务执行] 向量化文档 {document_id} 失败: {e}", exc_info=True)
             await self.db.rollback()
             try: await self.user_docs_milvus_service.delete_vectors_by_document_id_async(document.user_id, document_id)
             except Exception as del_e: logger.error(f"回滚删除 Milvus 向量失败: {del_e}")
@@ -502,7 +502,7 @@ class DocumentService:
 
         doc_content = await self.document_content_repository.get_document_content_async(document_id)
         if doc_content is None or not doc_content.content:
-            self.logger.error(f"文档 {document_id} 内容为空，无法图谱化。")
+            print(f"文档 {document_id} 内容为空，无法图谱化。")
             await self.document_repository.update_graph_status_async(document_id, DocumentStatus.FAILED, "文档内容为空")
             await self.db.commit()
             raise BusinessException("文档内容为空，无法图谱化")
@@ -532,7 +532,7 @@ class DocumentService:
             self.logger.info(f"[任务执行] 文档 {document_id} 图谱化成功。")
 
         except Exception as e:
-            self.logger.error(f"[任务执行] 图谱化文档 {document_id} 失败: {e}", exc_info=True)
+            print(f"[任务执行] 图谱化文档 {document_id} 失败: {e}", exc_info=True)
             await self.db.rollback()
             message = f"图谱化失败: {e.message}" if isinstance(e, BusinessException) else f"图谱化时发生内部错误: {str(e)}"
             await self.document_repository.update_graph_status_async(document_id, DocumentStatus.FAILED, message)

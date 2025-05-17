@@ -94,10 +94,10 @@ class AIQuestionService:
                     ))
                 return True, "", questions
             except json.JSONDecodeError as e:
-                self.logger.error(f"解析AI响应失败: {e}")
+                print(f"解析AI响应失败: {e}")
                 return False, f"解析AI响应失败: {str(e)}", None
             
         except Exception as e:
             error_msg = f"为职位 {position.name} 生成面试问题时发生错误: {str(e)}"
-            self.logger.error(error_msg, exc_info=True)
+            print(error_msg, exc_info=True)
             return False, error_msg, None

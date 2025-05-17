@@ -47,7 +47,7 @@ class KnowledgeGraphService:
             try:
                 system_prompt = await self.prompt_service.get_content_by_key_async("PKB_GRAPH_GENERATE_PROMPT")
             except NotFoundException:
-                 self.logger.error("未找到知识图谱生成所需的提示词模板: PKB_GRAPH_GENERATE_PROMPT")
+                 print("未找到知识图谱生成所需的提示词模板: PKB_GRAPH_GENERATE_PROMPT")
                  raise BusinessException("知识图谱服务配置不完整 (缺少提示词)")
 
             # 构建发送给 AI 的消息
@@ -86,11 +86,11 @@ class KnowledgeGraphService:
                          self.logger.warning("AI 返回的 mindMap 不是有效的字典结构。")
 
                 else:
-                     self.logger.error(f"AI 返回的知识图谱结果不是有效的 JSON 对象: {ai_result_text[:200]}...")
+                     print(f"AI 返回的知识图谱结果不是有效的 JSON 对象: {ai_result_text[:200]}...")
                      summary = "[AI结果格式错误]"
 
             except Exception as parse_ex:
-                self.logger.error(f"解析 AI 返回的知识图谱 JSON 失败: {parse_ex}. Raw result: {ai_result_text[:200]}...", exc_info=True)
+                print(f"解析 AI 返回的知识图谱 JSON 失败: {parse_ex}. Raw result: {ai_result_text[:200]}...", exc_info=True)
                 summary = "[AI结果解析失败]"
 
             # 将 keywords 和 mindMap 序列化回 JSON 字符串用于存储
@@ -101,8 +101,8 @@ class KnowledgeGraphService:
             return summary, keywords_json, mind_map_json
 
         except BusinessException as be: # 捕获并重新抛出已知的业务异常
-             self.logger.error(f"生成知识图谱时发生业务异常: {be.message}")
+             print(f"生成知识图谱时发生业务异常: {be.message}")
              raise
         except Exception as ex:
-            self.logger.error(f"生成知识图谱时发生未知错误: {ex}", exc_info=True)
+            print(f"生成知识图谱时发生未知错误: {ex}", exc_info=True)
             raise BusinessException("生成知识图谱时发生内部错误") from ex

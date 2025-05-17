@@ -137,7 +137,7 @@ class InterviewSessionService:
         except (NotFoundException, ValidationException):
             raise
         except Exception as e:
-            self.logger.error(f"创建面试会话时发生错误: {str(e)}", exc_info=True)
+            print(f"创建面试会话时发生错误: {str(e)}", exc_info=True)
             raise BusinessException("创建面试会话失败")
     
     async def start_session_async(self, user_id: int, request: StartSessionRequestDto) -> RealTimeConnectionInfoDto:
@@ -206,7 +206,7 @@ class InterviewSessionService:
         except (NotFoundException, ValidationException):
             raise
         except Exception as e:
-            self.logger.error(f"开始面试会话时发生错误: {str(e)}", exc_info=True)
+            print(f"开始面试会话时发生错误: {str(e)}", exc_info=True)
             raise BusinessException("开始面试会话失败")
     
     async def end_session_async(self, user_id: int, request: EndSessionRequestDto) -> bool:
@@ -239,7 +239,7 @@ class InterviewSessionService:
         except (NotFoundException, ValidationException):
             raise
         except Exception as e:
-            self.logger.error(f"结束面试会话时发生错误: {str(e)}", exc_info=True)
+            print(f"结束面试会话时发生错误: {str(e)}", exc_info=True)
             raise BusinessException("结束面试会话失败")
     
     async def get_session_async(self, user_id: int, session_id: int) -> InterviewSessionDetailDto:
@@ -312,7 +312,7 @@ class InterviewSessionService:
         except NotFoundException:
             raise
         except Exception as e:
-            self.logger.error(f"获取面试会话详情时发生错误: {str(e)}", exc_info=True)
+            print(f"获取面试会话详情时发生错误: {str(e)}", exc_info=True)
             raise BusinessException("获取面试会话详情失败")
     
     async def get_user_sessions_async(self, user_id: int, request: InterviewSessionListRequestDto) -> PagedResultDto[InterviewSessionListItemDto]:
@@ -385,7 +385,7 @@ class InterviewSessionService:
                 total_pages=(total_count + request.page_size - 1) // request.page_size
             )
         except Exception as e:
-            self.logger.error(f"获取用户会话列表时发生错误: {str(e)}", exc_info=True)
+            print(f"获取用户会话列表时发生错误: {str(e)}", exc_info=True)
             raise BusinessException("获取用户会话列表失败")
     
     async def save_interaction_async(self, request: SaveInteractionRequestDto) -> bool:
@@ -445,7 +445,7 @@ class InterviewSessionService:
         except NotFoundException:
             raise
         except Exception as e:
-            self.logger.error(f"保存交互记录时发生错误: {str(e)}", exc_info=True)
+            print(f"保存交互记录时发生错误: {str(e)}", exc_info=True)
             raise BusinessException("保存交互记录失败")
     
     async def start_evaluate_session_async(self, user_id: int, request: EvaluateSessionRequestDto) -> bool:
@@ -497,7 +497,7 @@ class InterviewSessionService:
         except (NotFoundException, ValidationException, BusinessException):
             raise
         except Exception as e:
-            self.logger.error(f"评估面试时发生错误: {str(e)}", exc_info=True)
+            print(f"评估面试时发生错误: {str(e)}", exc_info=True)
             raise BusinessException("评估面试时发生错误")
     
     async def process_evaluate_session_async(self, session_id: int) -> EvaluationResultDto:
@@ -605,7 +605,7 @@ class InterviewSessionService:
             raise
         except Exception as e:
             err = f"评估面试时发生错误: {str(e)}"
-            self.logger.error(err, exc_info=True)
+            print(err, exc_info=True)
             
             # 更新会话状态为评估失败
             await self.session_repository.update_evaluate_status_async(
@@ -646,7 +646,7 @@ class InterviewSessionService:
                 url = await self.storage_service.upload_async(mem_stream, file_key, "audio/raw")
                 return url
         except Exception as e:
-            self.logger.error(f"保存音频数据时发生错误: {str(e)}", exc_info=True)
+            print(f"保存音频数据时发生错误: {str(e)}", exc_info=True)
             return ""
     
     def _truncate_text(self, text: str, max_length: int) -> str:

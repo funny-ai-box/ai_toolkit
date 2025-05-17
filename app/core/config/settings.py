@@ -131,6 +131,11 @@ class Settings(BaseSettings):
     AZURE_STORAGE_CDN_DOMAIN: Optional[str] = None
 
 
+    # PKB 聊天设置
+    PKB_CHAT_MAX_CONTEXT_MESSAGES: Optional[int] = 10  # 聊天上下文最大消息数
+    PKB_CHAT_MAX_VECTOR_SEARCH_RESULTS: Optional[int] = 5  # 向量搜索最大结果数
+    PKB_CHAT_MIN_VECTOR_SCORE: Optional[float] = 0.7  # 向量搜索最低相似度分数
+
     # --- 其他设置 ---
     SPEECH_SERVICE_TYPE: Optional[str] = None
 

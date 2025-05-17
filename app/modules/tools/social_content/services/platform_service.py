@@ -45,7 +45,7 @@ class PlatformService:
                 for p in platforms
             ]
         except Exception as ex:
-            self.logger.error(f"获取所有平台失败: {str(ex)}")
+            print(f"获取所有平台失败: {str(ex)}")
             raise
     
     async def get_platform_prompts_async(self, platform_id: int) -> List[PlatformPromptDto]:
@@ -71,7 +71,7 @@ class PlatformService:
                 for p in prompts
             ]
         except Exception as ex:
-            self.logger.error(f"获取平台模板列表失败，平台ID：{platform_id}: {str(ex)}")
+            print(f"获取平台模板列表失败，平台ID：{platform_id}: {str(ex)}")
             raise
     
     async def get_user_prompts_async(self, user_id: int, platform_id: Optional[int] = None) -> List[UserPromptDto]:
@@ -105,7 +105,7 @@ class PlatformService:
                 for p in user_prompts
             ]
         except Exception as ex:
-            self.logger.error(f"获取用户平台模板列表失败，用户ID：{user_id}: {str(ex)}")
+            print(f"获取用户平台模板列表失败，用户ID：{user_id}: {str(ex)}")
             raise
     
     async def get_user_prompt_async(self, user_id: int, prompt_id: int) -> UserPromptDto:
@@ -140,7 +140,7 @@ class PlatformService:
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"获取用户模板详情失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
+            print(f"获取用户模板详情失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
             raise
     
     async def add_user_prompt_async(self, user_id: int, request: AddUserPromptRequestDto) -> int:
@@ -172,7 +172,7 @@ class PlatformService:
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"添加用户模板失败，用户ID：{user_id}: {str(ex)}")
+            print(f"添加用户模板失败，用户ID：{user_id}: {str(ex)}")
             raise
     
     async def update_user_prompt_async(self, user_id: int, request: UpdateUserPromptRequestDto) -> bool:
@@ -200,7 +200,7 @@ class PlatformService:
         except BusinessException:
             raise
         except Exception as ex:
-            self.logger.error(f"更新用户模板失败，用户ID：{user_id}, 模板ID：{request.id}: {str(ex)}")
+            print(f"更新用户模板失败，用户ID：{user_id}, 模板ID：{request.id}: {str(ex)}")
             raise
     
     async def delete_user_prompt_async(self, user_id: int, prompt_id: int) -> bool:
@@ -217,5 +217,5 @@ class PlatformService:
         try:
             return await self.platform_repository.delete_user_prompt_async(prompt_id, user_id)
         except Exception as ex:
-            self.logger.error(f"删除用户模板失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
+            print(f"删除用户模板失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
             raise

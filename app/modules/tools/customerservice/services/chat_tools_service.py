@@ -119,7 +119,7 @@ class ChatToolsService:
                 
             return self._get_context_from_prod_results(items)
         except Exception as ex:
-            self.logger.error(f"调用商品函数失败, 错误: {str(ex)}")
+            print(f"调用商品函数失败, 错误: {str(ex)}")
             return "查询商品信息时发生错误。"
     
     async def search_knowledge_base_async(self, user_id: int, query: str) -> Tuple[str, List[Any]]:
@@ -158,7 +158,7 @@ class ChatToolsService:
             context_info = self._get_context_from_search_results(search_results)
             return context_info, search_results
         except Exception as ex:
-            self.logger.error(f"查询知识库失败, 错误: {str(ex)}")
+            print(f"查询知识库失败, 错误: {str(ex)}")
             return "", []
     
     def _get_context_from_prod_results(self, prod_items: List[ProductListItemDto]) -> str:

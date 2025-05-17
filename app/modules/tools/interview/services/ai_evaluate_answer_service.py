@@ -92,12 +92,12 @@ class AIEvaluateAnswerService:
                 evaluation = result.get("evaluation", "")
                 return True, score, evaluation
             except json.JSONDecodeError as e:
-                self.logger.error(f"解析AI响应失败: {e}")
+                print(f"解析AI响应失败: {e}")
                 return False, 0, f"评估过程中发生错误: 无法解析结果 - {str(e)}"
             
         except Exception as e:
             error_msg = f"评估答案时发生错误: {str(e)}"
-            self.logger.error(error_msg, exc_info=True)
+            print(error_msg, exc_info=True)
             return False, 0, error_msg
     
     async def generate_overall_evaluation(self, interactions: List[InterviewInteraction], position: JobPosition) -> str:
@@ -147,5 +147,5 @@ class AIEvaluateAnswerService:
             
         except Exception as e:
             error_msg = f"生成总体评估时发生错误: {str(e)}"
-            self.logger.error(error_msg, exc_info=True)
+            print(error_msg, exc_info=True)
             return "无法生成总体评估，请稍后再试。"
