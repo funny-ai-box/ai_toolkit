@@ -1,92 +1,96 @@
-# app/modules/tools/podcast/services/podcast_service.py
+"""
+播客业务服务 - 播客模块核心业务逻辑
+"""
 import logging
 import datetime
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple, Union
 
-from app.core.config.settings import Settings
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.dtos import PagedResultDto, DocumentAppType, BaseIdResponseDto
+from app.core.utils.snowflake import generate_id
 from app.core.exceptions import BusinessException, NotFoundException
-from app.core.dtos import PagedResultDto, DocumentAppType
-from app.modules.base.knowledge.services.document_service import DocumentService
-from app.modules.base.knowledge.dtos import  DocumentStatus # From knowledge DTOs
+from app.core.job.services import JobPersistenceService
 
-from app.modules.tools.podcast.models import (
-    PodcastTask, PodcastTaskStatus, PodcastTaskContent, PodcastTaskContentType,
-    PodcastTaskScript, AudioStatusType, PodcastRoleType
+from app.modules.base.knowledge.services.document_service import DocumentService
+
+from app.modules.tools.podcast.constants import (
+    PodcastTaskStatus, PodcastRoleType, AudioStatusType, 
+    PodcastTaskContentType, VoiceGenderType
 )
-from app.modules.tools.podcast.dtos import (
-    CreatePodcastRequestDto, PodcastDetailDto, PodcastContentItemDto, PodcastScriptItemDto,
-    PodcastListItemDto, PodcastListRequestDto, TtsVoiceDefinitionDto, PodcastScriptRawItemDto
+from app.modules.tools.podcast.models import (
+    PodcastTask, PodcastTaskContent, PodcastTaskScript
 )
 from app.modules.tools.podcast.repositories import (
-    PodcastTaskRepository, PodcastTaskScriptRepository,
-    PodcastTaskContentRepository, PodcastScriptHistoryRepository
+    PodcastTaskRepository, PodcastTaskContentRepository, 
+    PodcastTaskScriptRepository, PodcastScriptHistoryRepository
 )
-from .ai_script_service import AIScriptService # Relative import
-from .ai_speech_service import AISpeechService # Relative import
+from app.modules.tools.podcast.dtos import (
+    CreatePodcastRequestDto, PodcastDetailDto, PodcastListRequestDto, 
+    PodcastListItemDto, PodcastContentItemDto, PodcastScriptItemDto,
+    TtsVoiceDefinition, PodcastScriptRawItemDto
+)
+from app.modules.tools.podcast.services.ai_script_service import AIScriptService
+from app.modules.tools.podcast.services.ai_speech_service import AISpeechService
+
 
 logger = logging.getLogger(__name__)
 
+
 class PodcastService:
     """播客服务实现"""
-
+    
     def __init__(
         self,
-        settings: Settings,
-        podcast_task_repo: PodcastTaskRepository,
-        podcast_script_repo: PodcastTaskScriptRepository,
-        podcast_content_repo: PodcastTaskContentRepository,
-        podcast_history_repo: PodcastScriptHistoryRepository,
+        db: AsyncSession,
+        podcast_repository: PodcastTaskRepository,
+        podcast_content_repository: PodcastTaskContentRepository,
+        podcast_script_repository: PodcastTaskScriptRepository,
+        script_history_repository: PodcastScriptHistoryRepository,
+        document_service: DocumentService,
         ai_script_service: AIScriptService,
         ai_speech_service: AISpeechService,
-        document_service: DocumentService # From base.knowledge
+        job_persistence_service: JobPersistenceService
     ):
-        self.settings = settings
-        self.podcast_task_repo = podcast_task_repo
-        self.podcast_script_repo = podcast_script_repo
-        self.podcast_content_repo = podcast_content_repo
-        self.podcast_history_repo = podcast_history_repo
+        """
+        初始化播客服务
+        
+        Args:
+            db: 数据库会话
+            podcast_repository: 播客仓储
+            podcast_content_repository: 播客内容仓储
+            podcast_script_repository: 播客脚本仓储
+            script_history_repository: 播客脚本历史仓储
+            document_service: 文档服务
+            ai_script_service: AI脚本服务
+            ai_speech_service: AI语音服务
+            job_persistence_service: 任务持久化服务
+        """
+        self.db = db
+        self.podcast_repository = podcast_repository
+        self.podcast_content_repository = podcast_content_repository
+        self.podcast_script_repository = podcast_script_repository
+        self.script_history_repository = script_history_repository
+        self.document_service = document_service
         self.ai_script_service = ai_script_service
         self.ai_speech_service = ai_speech_service
-        self.document_service = document_service
-
-    def _get_status_description(self, status: PodcastTaskStatus) -> str:
-        return {
-            PodcastTaskStatus.INIT: "初始化",
-            PodcastTaskStatus.PENDING: "待处理",
-            PodcastTaskStatus.PROCESSING: "处理中", # C# was "开始处理"
-            PodcastTaskStatus.COMPLETED: "已完成",
-            PodcastTaskStatus.FAILED: "处理失败",
-        }.get(status, "未知状态")
-
-    def _map_script_to_dto(self, script: PodcastTaskScript, voice_definitions: List[TtsVoiceDefinitionDto]) -> PodcastScriptItemDto:
-        voice_def = next((v for v in voice_definitions if v.id == script.voice_id), None)
-        role_type_desc = "主持人" if script.role_type == PodcastRoleType.HOST else "嘉宾"
-        audio_status_desc = {
-            AudioStatusType.PENDING: "待生成",
-            AudioStatusType.PROCESSING: "生成中",
-            AudioStatusType.COMPLETED: "已生成", # C# was "已生成"
-            AudioStatusType.FAILED: "生成失败",
-        }.get(script.audio_status, "未知状态")
-
-        return PodcastScriptItemDto(
-            id=script.id,
-            sequence_number=script.sequence_number,
-            role_type=script.role_type,
-            role_type_description=role_type_desc,
-            role_name=script.role_name,
-            voice_symbol=voice_def.voice_symbol if voice_def else None,
-            voice_name=voice_def.name if voice_def else None,
-            voice_description=voice_def.description if voice_def else None,
-            content=script.content, # NoSSML content
-            audio_duration=script.audio_duration,
-            audio_url=script.audio_path, # Assuming audio_path is the URL
-            audio_status=script.audio_status,
-            audio_status_description=audio_status_desc
-        )
-
-    async def create_podcast_async(self, user_id: int, request: CreatePodcastRequestDto) -> int:
-        """创建播客，返回播客ID"""
+        self.job_persistence_service = job_persistence_service
+    
+    async def create_podcast_async(
+        self, user_id: int, request: CreatePodcastRequestDto
+    ) -> int:
+        """
+        创建播客
+        
+        Args:
+            user_id: 用户ID
+            request: 创建请求
+        
+        Returns:
+            播客ID
+        """
         try:
+            # 创建播客记录
             podcast = PodcastTask(
                 user_id=user_id,
                 title=request.title,
@@ -94,488 +98,659 @@ class PodcastService:
                 scene=request.scene,
                 atmosphere=request.atmosphere,
                 guest_count=request.guest_count,
-                # status, generate_id, generate_count, progress_step will use model defaults or be set by add_async
+                status=PodcastTaskStatus.INIT,
+                generate_count=0,
+                generate_id=0,
+                progress_step=0
             )
-            await self.podcast_task_repo.add_async(podcast)
+            
+            # 保存播客
+            await self.podcast_repository.add_async(podcast)
+            
             return podcast.id
         except Exception as e:
-            logger.error(f"创建播客失败: {e}", exc_info=True)
-            if isinstance(e, (BusinessException, NotFoundException)):
-                 raise
-            raise BusinessException(f"创建播客失败: {str(e)}")
-
+            if not isinstance(e, (BusinessException, NotFoundException)):
+                logger.exception(f"创建播客失败: {e}")
+                raise BusinessException(f"创建播客失败: {str(e)}")
+            raise
+    
     async def add_podcast_content_async(
         self, user_id: int, podcast_id: int, content_type: PodcastTaskContentType,
-        source_document_id: Optional[int], source_content: Optional[str]
+        source_document_id: int, source_content: str
     ) -> int:
-        """给播客添加内容，返回内容项ID"""
-        # Validate podcast ownership and existence (optional here, or trust caller/controller)
-        podcast = await self.podcast_task_repo.get_by_id_async(podcast_id)
-        if not podcast or podcast.user_id != user_id:
-            raise NotFoundException("播客不存在或无权访问")
-        if podcast.status not in [PodcastTaskStatus.INIT, PodcastTaskStatus.COMPLETED, PodcastTaskStatus.FAILED]:
-             raise BusinessException(f"播客当前状态 ({self._get_status_description(podcast.status)}) 不允许添加内容")
-
+        """
+        给播客添加内容
+        
+        Args:
+            user_id: 用户ID
+            podcast_id: 播客ID
+            content_type: 内容类型
+            source_document_id: 文档ID
+            source_content: 文本内容
+        
+        Returns:
+            添加的内容项ID
+        """
         try:
+            # 创建播客内容项
             content_item = PodcastTaskContent(
                 user_id=user_id,
                 podcast_id=podcast_id,
                 content_type=content_type,
-                source_document_id=source_document_id if source_document_id and source_document_id > 0 else None,
+                source_document_id=source_document_id,
                 source_content=source_content
             )
-            content_id = await self.podcast_content_repo.add_async(content_item)
-            return content_id
-        except Exception as e:
-            logger.error(f"创建播客内容失败: {e}", exc_info=True)
-            if isinstance(e, (BusinessException, NotFoundException)):
-                 raise
-            raise BusinessException(f"创建播客内容失败: {str(e)}")
-
-    async def delete_podcast_content_async(self, user_id: int, content_id: int) -> bool:
-        """删除播客的内容项"""
-        try:
-            content = await self.podcast_content_repo.get_by_id_async(content_id)
-            if not content:
-                raise NotFoundException("播客内容不存在")
             
-            podcast = await self.podcast_task_repo.get_by_id_async(content.podcast_id)
+            # 保存内容项
+            return await self.podcast_content_repository.add_async(content_item)
+        except Exception as e:
+            if not isinstance(e, (BusinessException, NotFoundException)):
+                logger.exception(f"创建播客内容失败: {e}")
+                raise BusinessException(f"创建播客内容失败: {str(e)}")
+            raise
+    
+    async def delete_podcast_content_async(self, user_id: int, content_id: int) -> bool:
+        """
+        删除播客的内容
+        
+        Args:
+            user_id: 用户ID
+            content_id: 内容ID
+        
+        Returns:
+            操作结果
+        """
+        try:
+            # 获取内容项
+            content = await self.podcast_content_repository.get_by_id_async(content_id)
+            if not content:
+                raise NotFoundException("播客内容不存在或您没有访问权限")
+            
+            # 获取播客，验证所有权
+            podcast = await self.podcast_repository.get_by_id_async(content.podcast_id)
             if not podcast or podcast.user_id != user_id:
                 raise NotFoundException("播客不存在或您没有访问权限")
-             
-            if podcast.status not in [PodcastTaskStatus.INIT, PodcastTaskStatus.COMPLETED, PodcastTaskStatus.FAILED]:
-                raise BusinessException(f"播客当前状态 ({self._get_status_description(podcast.status)}) 不允许删除内容")
-
-            return await self.podcast_content_repo.delete_async(content_id)
+            
+            # 删除内容项
+            return await self.podcast_content_repository.delete_async(content_id)
         except Exception as e:
-            logger.error(f"删除播客内容失败, ID: {content_id}, Error: {e}", exc_info=True)
-            if isinstance(e, (BusinessException, NotFoundException)):
-                 raise
-            raise BusinessException(f"删除播客内容失败: {str(e)}")
-
-    async def get_podcast_content_detail_async(self, user_id: int, content_id: int) -> PodcastContentItemDto:
-         """获取播客内容的详情"""
-         try:
-             content_item_model = await self.podcast_content_repo.get_by_id_async(content_id)
-             if not content_item_model:
-                 raise NotFoundException("播客内容不存在")
-
-             podcast = await self.podcast_task_repo.get_by_id_async(content_item_model.podcast_id)
-             if not podcast or podcast.user_id != user_id:
-                 raise NotFoundException("播客不存在或您没有访问权限")
-
-             # Base DTO from model
-             content_dto = PodcastContentItemDto.model_validate(content_item_model)
-             
-             # If it's a document-based content, fetch document details
-             if content_item_model.source_document_id and content_item_model.source_document_id > 0:
-                 try:
-                     # document_service.get_document_async returns a more detailed DTO
-                     doc_detail_dto = await self.document_service.get_document_async(user_id, content_item_model.source_document_id)
-                     if doc_detail_dto:
-                         content_dto.source_content = doc_detail_dto.content # Full content from document
-                         content_dto.source_document_title = doc_detail_dto.title
-                         content_dto.source_document_original_name = doc_detail_dto.original_name
-                         content_dto.source_document_source_url = doc_detail_dto.source_url
-                         content_dto.source_document_status = doc_detail_dto.status
-                         content_dto.source_document_process_message = doc_detail_dto.process_message
-                     else: # Document not found by document_service, clear related fields
-                         content_dto.source_document_id = None # Mark as if document doesn't exist or error
-                 except NotFoundException:
-                      logger.warning(f"Document {content_item_model.source_document_id} for podcast content {content_id} not found via DocumentService.")
-                      content_dto.source_document_id = None # Or handle as error
-                 except Exception as doc_e:
-                     logger.error(f"Error fetching document {content_item_model.source_document_id} details: {doc_e}")
-                     # Decide if this is critical or just partial data
-             elif content_item_model.content_type == PodcastTaskContentType.TEXT:
-                 # Source content is already in content_item_model.source_content
-                 pass # content_dto.source_content is already set by model_validate
-             elif content_item_model.content_type == PodcastTaskContentType.URL:
-                 # content_item_model.source_content would be the URL itself.
-                 # If actual web content is needed, it should have been fetched and stored in a document,
-                 # then source_document_id would be populated.
-                 # If source_content here *is* the scraped text from URL, it's fine.
-                 # C# implies document service handles URL import into a document.
-                 pass
-
-
-             return content_dto
-         except Exception as e:
-             logger.error(f"获取播客内容详情失败, ID: {content_id}, Error: {e}", exc_info=True)
-             if isinstance(e, (BusinessException, NotFoundException)):
-                 raise
-             raise BusinessException(f"获取播客内容详情失败: {str(e)}")
-
-
-    async def _get_podcast_full_async(self, podcast_task_model: PodcastTask) -> PodcastDetailDto:
-        """Helper to get full PodcastDetailDto including resolved contents and scripts."""
-        # Get all voice definitions once
-        all_voice_defs = await self.ai_speech_service.get_supported_voices_async()
-
-        # Get script items
-        script_models = await self.podcast_script_repo.get_by_podcast_id_async(podcast_task_model.id)
-        script_dtos = [self._map_script_to_dto(s, all_voice_defs) for s in script_models]
-
-        # Get content items
-        content_models = await self.podcast_content_repo.get_by_podcast_id_async(podcast_task_model.id)
-        content_dtos: List[PodcastContentItemDto] = []
+            if not isinstance(e, NotFoundException):
+                logger.exception(f"删除播客内容失败，ID: {content_id}")
+                raise BusinessException(f"删除播客内容失败: {str(e)}")
+            raise
+    
+    async def get_podcast_content_detail_async(
+        self, user_id: int, content_id: int
+    ) -> PodcastContentItemDto:
+        """
+        获取播客内容的详情
         
-        doc_ids_to_fetch = []
-        temp_content_map: Dict[int, PodcastContentItemDto] = {} # doc_id -> content_dto
-
-        for cm in content_models:
-            cdto = PodcastContentItemDto.model_validate(cm)
-            # For TEXT or URL (if content is pre-fetched), source_content is already from model
-            # If URL content needs fetching or File content, it should be via document_service
-            if cm.source_document_id and cm.source_document_id > 0:
-                doc_ids_to_fetch.append(cm.source_document_id)
-                temp_content_map[cm.source_document_id] = cdto # Store temporarily
-            content_dtos.append(cdto)
-
-        if doc_ids_to_fetch:
-            try:
-                # Assuming get_documents_async returns a list of DTOs (e.g., DocumentDetailResponseDto)
-                document_details_list = await self.document_service.get_documents_async(
-                    podcast_task_model.user_id, list(set(doc_ids_to_fetch))
-                )
-                for doc_detail in document_details_list:
-                    if doc_detail.id in temp_content_map:
-                        target_cdto = temp_content_map[doc_detail.id]
-                        target_cdto.source_content = doc_detail.content # Full content
-                        target_cdto.source_document_title = doc_detail.title
-                        target_cdto.source_document_original_name = doc_detail.original_name
-                        target_cdto.source_document_source_url = doc_detail.source_url
-                        target_cdto.source_document_status = doc_detail.status
-                        target_cdto.source_document_process_message = doc_detail.process_message
-            except Exception as e:
-                logger.error(f"Error fetching document details for podcast {podcast_task_model.id}: {e}", exc_info=True)
-                # Content DTOs might have incomplete document info
+        Args:
+            user_id: 用户ID
+            content_id: 内容ID
         
-        return PodcastDetailDto(
-            id=podcast_task_model.id,
-            title=podcast_task_model.title,
-            description=podcast_task_model.description,
-            scene=podcast_task_model.scene,
-            atmosphere=podcast_task_model.atmosphere,
-            guest_count=podcast_task_model.guest_count,
-            generate_count=podcast_task_model.generate_count,
-            progress_step=podcast_task_model.progress_step,
-            status=podcast_task_model.status,
-            status_description=self._get_status_description(podcast_task_model.status),
-            error_message=podcast_task_model.error_message,
-            create_date=podcast_task_model.create_date,
-            script_items=script_dtos,
-            content_items=content_dtos
-        )
-
-    async def get_podcast_async(self, user_id: int, podcast_id: int) -> PodcastDetailDto:
-        """获取播客详情"""
+        Returns:
+            内容详情
+        """
         try:
-            podcast_model = await self.podcast_task_repo.get_by_id_async(podcast_id)
-            if not podcast_model or podcast_model.user_id != user_id:
+            # 获取内容项
+            content = await self.podcast_content_repository.get_by_id_async(content_id)
+            if not content:
+                raise NotFoundException("播客内容不存在或您没有访问权限")
+            
+            # 获取播客，验证所有权
+            podcast = await self.podcast_repository.get_by_id_async(content.podcast_id)
+            if not podcast or podcast.user_id != user_id:
                 raise NotFoundException("播客不存在或您没有访问权限")
-            return await self._get_podcast_full_async(podcast_model)
+            
+            # 创建响应对象
+            result = PodcastContentItemDto(
+                id=content.id,
+                contentType=content.content_type,
+                createDate=content.create_date,
+                sourceContent=content.source_content,
+                sourceDocumentId=content.source_document_id,
+                sourceDocumentStatus=2,  # 默认为已完成状态
+                sourceDocumentOriginalName=None,
+                sourceDocumentProcessMessage=None,
+                sourceDocumentSourceUrl=None,
+                sourceDocumentTitle=None
+            )
+            
+            # 处理有文档的id列表
+            if content.source_document_id > 0:
+                try:
+                    document = await self.document_service.get_document_async(
+                        user_id, content.source_document_id
+                    )
+                    if document:
+                        result.sourceContent = document.content
+                        result.sourceDocumentTitle = document.title
+                        result.sourceDocumentSourceUrl = document.source_url
+                        result.sourceDocumentProcessMessage = document.process_message
+                        result.sourceDocumentOriginalName = document.original_name
+                except Exception as doc_e:
+                    logger.warning(f"获取文档失败: {doc_e}")
+            
+            return result
         except Exception as e:
-            logger.error(f"获取播客详情失败, ID: {podcast_id}, Error: {e}", exc_info=True)
-            if isinstance(e, (BusinessException, NotFoundException)):
-                 raise
-            raise BusinessException(f"获取播客详情失败: {str(e)}")
-
-    async def get_user_podcasts_async(self, user_id: int, request: PodcastListRequestDto) -> PagedResultDto[PodcastListItemDto]:
-        """获取用户的播客列表"""
+            if not isinstance(e, NotFoundException):
+                logger.exception(f"获取播客内容的详情失败，ID: {content_id}")
+                raise BusinessException(f"获取播客内容的详情失败: {str(e)}")
+            raise
+    
+    async def get_podcast_async(self, user_id: int, podcast_id: int) -> PodcastDetailDto:
+        """
+        获取播客详情
+        
+        Args:
+            user_id: 用户ID
+            podcast_id: 播客ID
+        
+        Returns:
+            播客详情
+        """
         try:
-            podcast_models, total_count = await self.podcast_task_repo.get_paginated_async(
+            # 获取播客
+            podcast = await self.podcast_repository.get_by_id_async(podcast_id)
+            if not podcast or podcast.user_id != user_id:
+                raise NotFoundException("播客不存在或您没有访问权限")
+            
+            # 获取脚本项
+            script_items = await self.podcast_script_repository.get_by_podcast_id_async(podcast.id)
+            
+            # 获取语音角色定义
+            voices = await self.ai_speech_service.get_supported_voices_async()
+            
+            # 构建响应
+            result = PodcastDetailDto(
+                id=podcast.id,
+                title=podcast.title,
+                description=podcast.description,
+                scene=podcast.scene,
+                atmosphere=podcast.atmosphere,
+                guestCount=podcast.guest_count,
+                progressStep=podcast.progress_step,
+                generateCount=podcast.generate_count,
+                status=podcast.status,
+                statusDescription=self._get_status_description(podcast.status),
+                errorMessage=podcast.error_message,
+                createDate=podcast.create_date,
+                scriptItems=[self._map_to_script_item_dto(item, voices) for item in script_items],
+                contentItems=[]
+            )
+            
+            # 获取内容项
+            content_items = await self.podcast_content_repository.get_by_podcast_id_async(podcast.id)
+            content_dtos = []
+            
+            for content_item in content_items:
+                content_dto = PodcastContentItemDto(
+                    id=content_item.id,
+                    contentType=content_item.content_type,
+                    createDate=content_item.create_date,
+                    sourceContent=content_item.source_content,
+                    sourceDocumentId=content_item.source_document_id,
+                    sourceDocumentStatus=2,  # 默认为已完成状态
+                    sourceDocumentOriginalName=None,
+                    sourceDocumentProcessMessage=None,
+                    sourceDocumentSourceUrl=None,
+                    sourceDocumentTitle=None
+                )
+                content_dtos.append(content_dto)
+            
+            # 处理文档信息
+            document_ids = [c.source_document_id for c in content_items if c.source_document_id > 0]
+            if document_ids:
+                try:
+                    documents = await self.document_service.get_documents_async(user_id, document_ids)
+                    
+                    # 更新文档信息
+                    for doc in documents:
+                        for content in content_dtos:
+                            if content.sourceDocumentId == doc.id:
+                                content.sourceContent = doc.content
+                                content.sourceDocumentTitle = doc.title
+                                content.sourceDocumentSourceUrl = doc.source_url
+                                content.sourceDocumentProcessMessage = doc.process_message
+                                content.sourceDocumentOriginalName = doc.original_name
+                except Exception as doc_e:
+                    logger.warning(f"获取文档失败: {doc_e}")
+            
+            result.contentItems = content_dtos
+            
+            return result
+        except Exception as e:
+            if not isinstance(e, NotFoundException):
+                logger.exception(f"获取播客详情失败，ID: {podcast_id}")
+                raise BusinessException(f"获取播客详情失败: {str(e)}")
+            raise
+    
+    async def get_user_podcasts_async(
+        self, user_id: int, request: PodcastListRequestDto
+    ) -> PagedResultDto[PodcastListItemDto]:
+        """
+        获取用户的播客列表
+        
+        Args:
+            user_id: 用户ID
+            request: 请求参数
+        
+        Returns:
+            播客列表
+        """
+        try:
+            # 获取播客数据
+            podcasts, total_count = await self.podcast_repository.get_paginated_async(
                 user_id, request.page_index, request.page_size
             )
             
-            items_dtos: List[PodcastListItemDto] = []
-            if podcast_models:
-                podcast_ids = [p.id for p in podcast_models]
-                
-                # Get script counts
-                script_items_for_podcasts = await self.podcast_script_repo.get_by_podcast_ids_async(podcast_ids)
-                script_counts: Dict[int, int] = {pid: 0 for pid in podcast_ids}
-                for script in script_items_for_podcasts:
-                    script_counts[script.podcast_id] = script_counts.get(script.podcast_id, 0) + 1
-                    
-                # Get content counts
-                content_items_for_podcasts = await self.podcast_content_repo.get_by_podcast_ids_async(podcast_ids)
-                content_counts: Dict[int, int] = {pid: 0 for pid in podcast_ids}
-                for content in content_items_for_podcasts:
-                    content_counts[content.podcast_id] = content_counts.get(content.podcast_id, 0) + 1
-
-                for p_model in podcast_models:
-                    items_dtos.append(
-                        PodcastListItemDto(
-                            id=p_model.id,
-                            title=p_model.title,
-                            description=p_model.description,
-                            scene=p_model.scene,
-                            atmosphere=p_model.atmosphere,
-                            guest_count=p_model.guest_count,
-                            progress_step=p_model.progress_step,
-                            generate_count=p_model.generate_count,
-                            status=p_model.status,
-                            status_description=self._get_status_description(p_model.status),
-                            content_item_count=content_counts.get(p_model.id, 0),
-                            script_item_count=script_counts.get(p_model.id, 0),
-                            create_date=p_model.create_date
-                        )
-                    )
+            # 获取内容项和脚本项数量
+            podcast_ids = [p.id for p in podcasts]
+            script_count_dict = {}
+            content_count_dict = {}
             
-            return PagedResultDto(
-                items=items_dtos,
-                total_count=total_count,
-                page_index=request.page_index,
-                page_size=request.page_size,
-                # total_pages is calculated in PagedResultDto or can be done here
+            if podcast_ids:
+                # 获取脚本数量
+                script_items = await self.podcast_script_repository.get_by_podcast_ids_async(podcast_ids)
+                # 获取内容数量
+                content_items = await self.podcast_content_repository.get_by_podcast_ids_async(podcast_ids)
+                
+                # 统计每个播客的数量
+                for podcast_id in podcast_ids:
+                    script_count_dict[podcast_id] = len([s for s in script_items if s.podcast_id == podcast_id])
+                    content_count_dict[podcast_id] = len([c for c in content_items if c.podcast_id == podcast_id])
+            
+            # 转换为DTO
+            items = []
+            for podcast in podcasts:
+                podcast_dto = PodcastListItemDto(
+                    id=podcast.id,
+                    title=podcast.title,
+                    description=podcast.description,
+                    scene=podcast.scene,
+                    atmosphere=podcast.atmosphere,
+                    guestCount=podcast.guest_count,
+                    progressStep=podcast.progress_step,
+                    generateCount=podcast.generate_count,
+                    status=podcast.status,
+                    statusDescription=self._get_status_description(podcast.status),
+                    contentItemCount=content_count_dict.get(podcast.id, 0),
+                    scriptItemCount=script_count_dict.get(podcast.id, 0),
+                    createDate=podcast.create_date
+                )
+                items.append(podcast_dto)
+            
+            # 构建分页结果
+            result = PagedResultDto[PodcastListItemDto](
+                items=items,
+                totalCount=total_count,
+                pageIndex=request.page_index,
+                pageSize=request.page_size,
+                totalPages=(total_count + request.page_size - 1) // request.page_size
             )
+            
+            return result
         except Exception as e:
-            logger.error(f"获取用户播客列表失败: {e}", exc_info=True)
+            logger.exception(f"获取用户播客列表失败: {e}")
             raise BusinessException(f"获取播客列表失败: {str(e)}")
-
+    
     async def delete_podcast_async(self, user_id: int, podcast_id: int) -> bool:
-        """删除播客"""
+        """
+        删除播客
+        
+        Args:
+            user_id: 用户ID
+            podcast_id: 播客ID
+        
+        Returns:
+            操作结果
+        """
         try:
-            podcast = await self.podcast_task_repo.get_by_id_async(podcast_id)
+            # 获取播客
+            podcast = await self.podcast_repository.get_by_id_async(podcast_id)
             if not podcast or podcast.user_id != user_id:
                 raise NotFoundException("播客不存在或您没有访问权限")
             
-            # Check status - C# does not check status for deletion, but it might be a good idea
-            # if podcast.status == PodcastTaskStatus.PROCESSING:
-            #     raise BusinessException("播客正在处理中，无法删除")
-
-            # Cascade delete related items
-            await self.podcast_script_repo.delete_by_podcast_id_async(podcast_id)
-            await self.podcast_content_repo.delete_by_podcast_id_async(podcast_id)
-            # Consider deleting history items too, or keep them for audit
-            # C# code doesn't explicitly delete history items here
+            # 删除脚本项
+            await self.podcast_script_repository.delete_by_podcast_id_async(podcast_id)
             
-            return await self.podcast_task_repo.delete_async(podcast_id)
+            # 删除内容项
+            await self.podcast_content_repository.delete_by_podcast_id_async(podcast_id)
+            
+            # 删除播客
+            return await self.podcast_repository.delete_async(podcast_id)
         except Exception as e:
-            logger.error(f"删除播客失败, ID: {podcast_id}, Error: {e}", exc_info=True)
-            if isinstance(e, (BusinessException, NotFoundException)):
-                 raise
-            raise BusinessException(f"删除播客失败: {str(e)}")
-
+            if not isinstance(e, NotFoundException):
+                logger.exception(f"删除播客失败，ID: {podcast_id}")
+                raise BusinessException(f"删除播客失败: {str(e)}")
+            raise
+    
     async def start_podcast_generate_async(self, user_id: int, podcast_id: int) -> bool:
-        """开始播客脚本和音频的生成"""
-        try:
-            podcast = await self.podcast_task_repo.get_by_id_async(podcast_id)
-            if not podcast or podcast.user_id != user_id:
-                raise BusinessException("播客不存在或您没有访问权限") # C# uses BusinessException here
-
-            content_items = await self.podcast_content_repo.get_by_podcast_id_async(podcast_id)
-            if not content_items:
-                raise BusinessException("播客任务还未上传任何内容")
-            
-            doc_ids_to_check = [
-                item.source_document_id for item in content_items 
-                if item.source_document_id and item.source_document_id > 0
-             ]
-            if doc_ids_to_check:
-                # This returns List[DocumentStatusDto]
-                doc_statuses = await self.document_service.get_document_status_async(user_id, doc_ids_to_check)
-                if any(ds.status != DocumentStatus.COMPLETED for ds in doc_statuses):
-                    incomplete_docs = [ds.id for ds in doc_statuses if ds.status != DocumentStatus.COMPLETED]
-                    logger.warning(f"播客 {podcast_id} 包含未完成的文档: {incomplete_docs}")
-                    raise BusinessException("部分源文档内容未解析完成，请稍后再试")
-            
-            if podcast.status not in [PodcastTaskStatus.INIT, PodcastTaskStatus.COMPLETED, PodcastTaskStatus.FAILED]:
-                raise BusinessException("播客正在处理中或已在队列中，请稍后再试")
-            
-            if podcast.generate_count >= 5: # Max 5 generations
-                raise BusinessException("该任务生成已超过5次，不可再生成")
-
-            # Create a new history entry for this generation attempt
-            history_id = await self.podcast_history_repo.add_async(podcast_id)
-            
-            # Update podcast task to PENDING and link to this history_id
-            return await self.podcast_task_repo.start_podcast_generate_async(podcast_id, history_id)
-        except Exception as e:
-            logger.error(f"播客生成任务提交失败, ID: {podcast_id}, Error: {e}", exc_info=True)
-            if isinstance(e, (BusinessException, NotFoundException)):
-                 raise
-            raise BusinessException(f"播客生成任务提交失败: {str(e)}")
-
-    async def _generate_script_internal_async(self, history_id: int, podcast_detail: PodcastDetailDto, voices: List[TtsVoiceDefinitionDto]) -> bool:
-        """Internal: AI generates script and saves to DB."""
-        try:
-            logger.info(f"开始为播客 {podcast_detail.id} (History ID: {history_id}) 生成脚本...")
-            raw_script_items: List[PodcastScriptRawItemDto] = await self.ai_script_service.generate_script_async(podcast_detail, voices)
-            await self.podcast_task_repo.update_progress_step_async(podcast_detail.id, 20)
-
-            # Important: Move current scripts (if any) to history *before* adding new ones.
-            # The C# logic moves scripts from PodcastTaskScript to PodcastScriptHistoryItem
-            # PodcastScriptHistoryRepository.MoveScriptToHistoryAsync does this.
-            await self.podcast_history_repo.move_script_to_history_async(podcast_detail.id)
-
-            new_task_scripts: List[PodcastTaskScript] = []
-            for i, raw_item in enumerate(raw_script_items):
-                role_type_str = (raw_item.role_type or "guest").lower()
-                role_type = PodcastRoleType.HOST if role_type_str == "host" else PodcastRoleType.GUEST
-                
-                voice_def = next((v for v in voices if v.voice_symbol == raw_item.voice_symbol), None)
-                if not voice_def:
-                    raise BusinessException(f"AI生成的脚本中包含无效的语音角色: {raw_item.voice_symbol}")
-                
-                new_task_scripts.append(
-                    PodcastTaskScript(
-                        podcast_id=podcast_detail.id,
-                        history_id=history_id, # Link to current generation attempt
-                        sequence_number=i + 1,
-                        role_type=role_type,
-                        role_name=raw_item.role_name,
-                        voice_id=voice_def.id, # Store ID of the voice definition
-                        content=raw_item.no_ssml_content,
-                        ssml_content=raw_item.content, # Potentially SSML content
-                        audio_status=AudioStatusType.PENDING 
-                    )
-                )
-            
-            if new_task_scripts:
-                await self.podcast_script_repo.add_range_async(new_task_scripts)
-            
-            await self.podcast_task_repo.update_progress_step_async(podcast_detail.id, 30)
-            logger.info(f"播客 {podcast_detail.id} (History ID: {history_id}) 脚本生成成功。")
-            return True
-        except Exception as e:
-            logger.error(f"生成播客脚本内部失败, Podcast ID: {podcast_detail.id}, History ID: {history_id}, Error: {e}", exc_info=True)
-            # This error will be caught by process_podcast_generate
-            raise BusinessException(f"生成播客脚本失败: {str(e)}")
-
-
-    async def _generate_audio_internal_async(self, podcast_task: PodcastTask, voices: List[TtsVoiceDefinitionDto]) -> bool:
-        """Internal: Generates audio for script items."""
-        script_items = await self.podcast_script_repo.get_by_podcast_id_async(podcast_task.id)
-        if not script_items:
-            # This might happen if script generation failed but wasn't caught before, or if no scripts were generated.
-            logger.warning(f"播客 {podcast_task.id} 脚本为空，无法生成语音。")
-            # Depending on desired behavior, this could be an error or just complete this step.
-            # Let's assume if no scripts, this step is "done" but no audio generated.
-            return True # Or False if this state is an error for audio generation phase.
-
-        total_scripts = len(script_items)
-        scripts_processed_count = 0
-        initial_progress = 30 # Progress after script generation
-
-        for item in script_items:
-            try:
-                logger.info(f"开始为脚本项 {item.id} (播客 {podcast_task.id}) 生成语音...")
-                await self.podcast_script_repo.update_audio_status_async(item.id, AudioStatusType.PROCESSING, None, datetime.timedelta(0))
-                
-                voice_def = next((v for v in voices if v.id == item.voice_id), None)
-                if not voice_def or not voice_def.voice_symbol:
-                    logger.error(f"脚本项 {item.id} 语音角色定义无效或缺少符号。")
-                    await self.podcast_script_repo.update_audio_status_async(item.id, AudioStatusType.FAILED, "无效语音角色", datetime.timedelta(0))
-                    continue # Skip to next item or raise error for the whole batch
-                
-                # Use ai_speech_service's combined TTS and upload method
-                success, audio_url, audio_duration = await self.ai_speech_service.text_to_speech_and_upload_async(
-                    task_id=podcast_task.id, # For pathing/identification
-                    ssml_text=item.ssml_content or item.content or "", # Prefer SSML, fallback to content
-                    plain_text=item.content or "", # Plain text
-                    voice_symbol=voice_def.voice_symbol
-                )
-
-                if success and audio_url:
-                    await self.podcast_script_repo.update_audio_status_async(item.id, AudioStatusType.COMPLETED, audio_url, audio_duration)
-                    logger.info(f"脚本项 {item.id} 语音生成成功: {audio_url}")
-                else:
-                    logger.error(f"脚本项 {item.id} 语音生成失败。")
-                    await self.podcast_script_repo.update_audio_status_async(item.id, AudioStatusType.FAILED, "语音生成接口调用失败", datetime.timedelta(0))
-                    # Decide: continue with others or fail the whole podcast generation? C# implies it throws.
-                    raise BusinessException(f"脚本项 {item.id} 语音生成失败")
-
-                scripts_processed_count += 1
-                current_step_progress = int((scripts_processed_count / total_scripts) * 60) # Audio part is 60% of progress (30-90)
-                await self.podcast_task_repo.update_progress_step_async(podcast_task.id, initial_progress + current_step_progress)
-
-            except Exception as e_audio:
-                logger.error(f"生成语音失败，脚本项ID: {item.id}, Error: {e_audio}", exc_info=True)
-                await self.podcast_script_repo.update_audio_status_async(item.id, AudioStatusType.FAILED, str(e_audio), datetime.timedelta(0))
-                # This error will be caught by process_podcast_generate
-                raise BusinessException(f"脚本项 {item.id} 的语音生成过程中断: {str(e_audio)}")
+        """
+        开始播客脚本和音频的生成
         
-        logger.info(f"播客 {podcast_task.id} 所有脚本项语音处理完成。")
-        return True
-
+        Args:
+            user_id: 用户ID
+            podcast_id: 播客ID
+        
+        Returns:
+            操作结果
+        """
+        try:
+            # 获取播客
+            podcast = await self.podcast_repository.get_by_id_async(podcast_id)
+            if not podcast or podcast.user_id != user_id:
+                raise BusinessException("播客不存在或您没有访问权限")
+            
+            # 检查内容是否存在
+            contents = await self.podcast_content_repository.get_by_podcast_id_async(podcast_id)
+            if not contents:
+                raise BusinessException("播客任务还未上传内容")
+            
+            # 检查文档解析是否完成
+            doc_ids = [c.source_document_id for c in contents if c.source_document_id > 0]
+            if doc_ids:
+                doc_statuses = await self.document_service.get_document_status_async(user_id, doc_ids)
+                if any(status.status != 2 for status in doc_statuses):
+                    raise BusinessException("文档内容未解析完成")
+            
+            # 检查播客状态
+            valid_statuses = [PodcastTaskStatus.INIT, PodcastTaskStatus.COMPLETED, PodcastTaskStatus.FAILED]
+            if podcast.status not in valid_statuses:
+                raise BusinessException("播客正在处理中，请稍后再试")
+            
+            # 检查生成次数限制
+            if podcast.generate_count >= 5:
+                raise BusinessException("该任务生成已超过5次，不可再生成")
+            
+            # 写入历史记录
+            history_id = await self.script_history_repository.add_async(podcast_id)
+            
+            # 开始播客生成
+            result = await self.podcast_repository.start_podcast_generate_async(podcast_id, history_id)
+            
+            # 创建持久化任务记录
+            await self.job_persistence_service.create_job(
+                task_type="podcast.generate",
+                params_id=podcast_id,
+                params_data=None
+            )
+            
+            return result
+        except Exception as e:
+            if isinstance(e, BusinessException):
+                raise
+            logger.exception(f"播客生成失败，ID: {podcast_id}")
+            raise BusinessException(f"播客生成失败: {str(e)}")
+    
     async def process_podcast_generate(self, podcast_id: int) -> bool:
         """
-        异步处理播客脚本和音频的生成。
-        This is the main worker logic for a single podcast generation task.
-        """
-        podcast_task = await self.podcast_task_repo.get_by_id_async(podcast_id)
-        if not podcast_task:
-            logger.error(f"ProcessPodcastGenerate: 播客 {podcast_id} 未找到。")
-            return False # Or raise NotFoundException
+        处理播客脚本和音频的生成
         
-        # This check is important. C# logic has this.
-        if podcast_task.status != PodcastTaskStatus.PENDING:
-            logger.warning(f"播客 {podcast_id} 状态为 {podcast_task.status}, 非 PENDING，跳过处理。")
-            # Potentially another worker picked it up, or it's not meant to be processed.
-            return False # Not an error, but not processed by this call.
-
-        # Try to lock the task for processing
-        locked = await self.podcast_task_repo.lock_processing_status_async(podcast_id)
-        if not locked:
-            logger.info(f"无法锁定播客 {podcast_id} 进行处理 (可能已被另一进程锁定或状态已改变)。")
-            return False 
-
-        current_history_id = podcast_task.generate_id # This was set by start_podcast_generate_async
-        if not current_history_id or current_history_id == 0:
-            errmsg = f"播客 {podcast_id} 缺少有效的 GenerateId (HistoryId) 无法处理。"
-            logger.error(errmsg)
-            await self.podcast_task_repo.update_status_async(podcast_id, PodcastTaskStatus.FAILED, errmsg)
-            # Also update history entry if one was add_async-ed but generate_id wasn't set on task
-            return False
-
+        Args:
+            podcast_id: 播客ID
+        
+        Returns:
+            操作结果
+        """
+        # 获取播客
+        podcast = await self.podcast_repository.get_by_id_async(podcast_id)
+        
+        # 检查播客状态
+        if podcast.status != PodcastTaskStatus.PENDING:
+            raise BusinessException("播客不是待处理状态")
+        
         try:
-            logger.info(f"开始处理播客生成任务: {podcast_id}, History ID: {current_history_id}")
+            # 锁定处理状态
+            if not await self.podcast_repository.lock_processing_status_async(podcast_id):
+                raise BusinessException("播客正在处理中，请稍后再试")
             
-            # Fetch full details needed for generation (includes content text)
-            podcast_detail_dto = await self._get_podcast_full_async(podcast_task)
+            # 获取播客详情
+            podcast_detail = await self.get_podcast_async(podcast.user_id, podcast_id)
             
-            # Fetch all supported voices once
-            supported_voices = await self.ai_speech_service.get_supported_voices_async()
-            if not supported_voices:
-                raise BusinessException("系统中未配置可用的语音角色。")
-
-            await self.podcast_task_repo.update_progress_step_async(podcast_id, 5)
-
-            # Step 1: Generate Script
-            logger.info(f"播客 {podcast_id}: 开始脚本生成...")
-            await self._generate_script_internal_async(current_history_id, podcast_detail_dto, supported_voices)
-            logger.info(f"播客 {podcast_id}: 脚本生成完成。")
-            # Progress is updated inside _generate_script_internal_async (to 30)
-
-            # Step 2: Generate Audio
-            logger.info(f"播客 {podcast_id}: 开始语音合成...")
-            await self._generate_audio_internal_async(podcast_task, supported_voices)
-            logger.info(f"播客 {podcast_id}: 语音合成完成。")
-            # Progress is updated inside _generate_audio_internal_async (up to 90)
+            # 获取支持的语音类型
+            voices = await self.ai_speech_service.get_supported_voices_async()
             
-            await self.podcast_task_repo.update_status_async(podcast_id, PodcastTaskStatus.COMPLETED)
-            await self.podcast_history_repo.update_status_async(current_history_id, PodcastTaskStatus.COMPLETED)
-            await self.podcast_task_repo.update_progress_step_async(podcast_id, 100)
+            # 更新进度
+            await self.podcast_repository.update_progress_step_async(podcast_id, 5)
             
-            logger.info(f"播客 {podcast_id} (History ID: {current_history_id}) 处理成功完成。")
+            # 1. 生成播客脚本
+            await self._generate_script_async(podcast.generate_id, podcast_detail, voices)
+            
+            # 2. 根据脚本生成音频
+            await self._generate_audio_async(podcast, voices)
+            
+            # 更新状态为已完成
+            await self.podcast_repository.update_status_async(podcast_id, PodcastTaskStatus.COMPLETED)
+            await self.script_history_repository.update_status_async(podcast.generate_id, PodcastTaskStatus.COMPLETED)
+            
+            # 更新进度
+            await self.podcast_repository.update_progress_step_async(podcast_id, 100)
+            
             return True
-
         except Exception as e:
-            logger.error(f"生成播客内容失败, ID: {podcast_id}, History ID: {current_history_id}, Error: {e}", exc_info=True)
-            error_message = str(e) if isinstance(e, BusinessException) else f"内部处理错误: {str(e)}"
+            # 更新状态为失败
+            error_msg = str(e)
+            await self.podcast_repository.update_status_async(podcast_id, PodcastTaskStatus.FAILED, error_msg)
+            await self.script_history_repository.update_status_async(podcast.generate_id, PodcastTaskStatus.FAILED, error_msg)
             
-            await self.podcast_task_repo.update_status_async(podcast_id, PodcastTaskStatus.FAILED, error_message)
-            if current_history_id: # Ensure history_id is valid before updating
-                await self.podcast_history_repo.update_status_async(current_history_id, PodcastTaskStatus.FAILED, error_message)
-            await self.podcast_task_repo.update_progress_step_async(podcast_id, 100) # Mark progress as done even on failure
+            # 更新进度
+            await self.podcast_repository.update_progress_step_async(podcast_id, 100)
+            
+            logger.exception(f"生成播客内容失败，ID: {podcast_id}")
             return False
-
-    async def get_supported_voices_async(self) -> List[TtsVoiceDefinitionDto]:
-        """获取所有支持的语音角色"""
+    
+    async def _generate_script_async(
+        self, history_id: int, podcast: PodcastDetailDto, voices: List[TtsVoiceDefinition]
+    ) -> bool:
+        """
+        生成播客脚本
+        
+        Args:
+            history_id: 历史ID
+            podcast: 播客对象
+            voices: 音频角色
+        
+        Returns:
+            操作结果
+        """
+        try:
+            # AI生成播客脚本
+            script_items = await self.ai_script_service.generate_script_async(podcast, voices)
+            
+            # 更新进度
+            await self.podcast_repository.update_progress_step_async(podcast.id, 20)
+            
+            # 迁移旧的脚本项
+            await self.script_history_repository.move_script_to_history_async(podcast.id)
+            
+            # 创建新的脚本项
+            new_script_items = []
+            for i, item in enumerate(script_items):
+                # 确定角色类型
+                role_type = PodcastRoleType.HOST if item.role_type.lower() == "host" else PodcastRoleType.GUEST
+                
+                # 验证语音角色的有效性
+                voice_definition = next((v for v in voices if v.voice_symbol == item.voice_symbol), None)
+                if not voice_definition:
+                    raise BusinessException(f"语音角色不存在: {item.voice_symbol}")
+                
+                # 创建脚本项
+                script_item = PodcastTaskScript(
+                    podcast_id=podcast.id,
+                    history_id=history_id,
+                    sequence_number=i + 1,
+                    role_type=role_type,
+                    role_name=item.role_name,
+                    voice_id=voice_definition.id,
+                    content=item.no_ssml_content or "",
+                    ssml_content=item.content or "",
+                    audio_status=AudioStatusType.PENDING,
+                    audio_duration=0
+                )
+                new_script_items.append(script_item)
+            
+            # 保存脚本项
+            await self.podcast_script_repository.add_range_async(new_script_items)
+            
+            # 更新进度
+            await self.podcast_repository.update_progress_step_async(podcast.id, 30)
+            
+            return True
+        except Exception as e:
+            logger.exception(f"生成播客脚本失败，ID: {podcast.id}")
+            raise BusinessException(f"生成播客脚本失败: {str(e)}")
+    
+    async def _generate_audio_async(
+        self, podcast: PodcastTask, voices: List[TtsVoiceDefinition]
+    ) -> bool:
+        """
+        生成播客语音
+        
+        Args:
+            podcast: 播客对象
+            voices: 音频角色
+        
+        Returns:
+            操作结果
+        """
+        # 获取脚本项
+        script_items = await self.podcast_script_repository.get_by_podcast_id_async(podcast.id)
+        if not script_items:
+            raise BusinessException("播客脚本为空，无法生成语音")
+        
+        # 逐个生成语音
+        i = 0
+        total_scripts = len(script_items)
+        for item in script_items:
+            try:
+                # 更新状态为处理中
+                await self.podcast_script_repository.update_audio_status_async(
+                    item.id, AudioStatusType.PROCESSING
+                )
+                
+                # 获取语音定义
+                voice_def = next((v for v in voices if v.id == item.voice_id), None)
+                if not voice_def:
+                    raise BusinessException(f"语音角色不存在，ID: {item.voice_id}")
+                
+                # 生成语音
+                success, audio_url, audio_duration = await self.ai_speech_service.text_to_speech_async(
+                    podcast.id,
+                    item.ssml_content or "",  # 使用包含SSML标记的内容
+                    item.content or "",       # 不带SSML标记的内容
+                    voice_def.voice_symbol or ""
+                )
+                
+                if not success:
+                    raise BusinessException("语音生成失败")
+                
+                # 更新状态为已完成
+                await self.podcast_script_repository.update_audio_status_async(
+                    item.id,
+                    AudioStatusType.COMPLETED,
+                    audio_url,
+                    float(audio_duration)
+                )
+                
+                # 更新进度
+                i += 1
+                progress_step = 30 + (i * 70 // total_scripts)
+                await self.podcast_repository.update_progress_step_async(podcast.id, progress_step)
+            
+            except Exception as e:
+                # 更新状态为失败
+                await self.podcast_script_repository.update_audio_status_async(
+                    item.id, AudioStatusType.FAILED
+                )
+                logger.exception(f"生成语音失败，脚本项ID: {item.id}")
+                raise BusinessException(f"生成语音失败，脚本项ID: {item.id}: {str(e)}")
+        
+        return True
+    
+    async def get_supported_voices_async(self) -> List[TtsVoiceDefinition]:
+        """
+        获取所有支持的语音角色
+        
+        Returns:
+            语音角色列表
+        """
         return await self.ai_speech_service.get_supported_voices_async()
-
-    async def get_voices_by_locale_async(self, locale: str) -> List[TtsVoiceDefinitionDto]:
-        """获取指定语言的语音角色"""
+    
+    async def get_voices_by_locale_async(self, locale: str) -> List[TtsVoiceDefinition]:
+        """
+        获取指定语言的语音角色
+        
+        Args:
+            locale: 语言/地区
+        
+        Returns:
+            语音角色列表
+        """
         return await self.ai_speech_service.get_voices_by_locale_async(locale)
+    
+    def _get_status_description(self, status: PodcastTaskStatus) -> str:
+        """
+        获取状态描述
+        
+        Args:
+            status: 状态代码
+        
+        Returns:
+            状态描述
+        """
+        status_descriptions = {
+            PodcastTaskStatus.INIT: "初始化",
+            PodcastTaskStatus.PENDING: "待处理",
+            PodcastTaskStatus.PROCESSING: "开始处理",
+            PodcastTaskStatus.COMPLETED: "已完成",
+            PodcastTaskStatus.FAILED: "处理失败"
+        }
+        return status_descriptions.get(status, "未知状态")
+    
+    def _map_to_script_item_dto(
+        self, script_item: PodcastTaskScript, voices: List[TtsVoiceDefinition]
+    ) -> PodcastScriptItemDto:
+        """
+        将实体对象转换为DTO
+        
+        Args:
+            script_item: 脚本项实体
+            voices: 语音定义列表
+        
+        Returns:
+            脚本项DTO
+        """
+        # 查找匹配的语音定义
+        voice = next((v for v in voices if v.id == script_item.voice_id), None)
+        
+        # 语音状态描述
+        audio_status_descriptions = {
+            AudioStatusType.PENDING: "待生成",
+            AudioStatusType.PROCESSING: "生成中",
+            AudioStatusType.COMPLETED: "已生成",
+            AudioStatusType.FAILED: "生成失败"
+        }
+        
+        # 角色类型描述
+        role_type_descriptions = {
+            PodcastRoleType.HOST: "主持人",
+            PodcastRoleType.GUEST: "嘉宾"
+        }
+        
+        return PodcastScriptItemDto(
+            id=script_item.id,
+            sequenceNumber=script_item.sequence_number,
+            roleType=script_item.role_type,
+            roleTypeDescription=role_type_descriptions.get(script_item.role_type, "未知角色"),
+            roleName=script_item.role_name,
+            voiceSymbol=voice.voice_symbol if voice else None,
+            voiceName=voice.name if voice else None,
+            voiceDescription=voice.description if voice else None,
+            content=script_item.content,
+            audioDuration=script_item.audio_duration,
+            audioUrl=script_item.audio_path,
+            audioStatus=script_item.audio_status,
+            audioStatusDescription=audio_status_descriptions.get(script_item.audio_status, "未知状态")
+        )

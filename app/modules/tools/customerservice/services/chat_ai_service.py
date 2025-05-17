@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 import httpx
 
 from app.core.ai.chat.base import IChatAIService
-from app.core.ai.dtos import ChatRoleType, InputMessage, InputImageMessage
+from app.core.ai.dtos import ChatRoleType, InputMessage
 from app.core.config.settings import Settings
 from app.modules.base.prompts.services import PromptTemplateService
 from app.modules.tools.customerservice.services.chat_tools_service import ChatToolsService
@@ -41,7 +41,7 @@ class ChatAIService:
         self.logger = logging.getLogger(__name__)
         
         # 从配置中获取敏感词
-        customer_service_config = settings.json.get("CustomerService", {})
+        customer_service_config = settings.get_or_default("CustomerService", {})
         chat_config = customer_service_config.get("Chat", {})
         self.sensitive_words = chat_config.get("SensitiveWords", "色情、赌博、毒品、暴力等违法内容")
     
@@ -149,11 +149,11 @@ class ChatAIService:
             messages.append(InputMessage(ChatRoleType.SYSTEM, system_prompt))
             
             # 发送图片给模型
-            messages.append(InputImageMessage(
-                ChatRoleType.USER,
-                "请描述图片.",
-                [image_url]
-            ))
+            messages.append(InputMessage.from_text_and_image_urls(
+    ChatRoleType.USER,
+    "请描述图片.",
+    [image_url]
+))
             
             # 调用AI服务分析图片内容
             response = await self.ai_service.chat_completion_async(messages)

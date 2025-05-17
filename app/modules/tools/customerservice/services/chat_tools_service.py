@@ -38,7 +38,7 @@ class ChatToolsService:
         self.logger = logging.getLogger(__name__)
         
         # 从配置中获取向量搜索参数
-        customer_service_config = settings.json.get("CustomerService", {})
+        customer_service_config = settings.get_or_default("CustomerService", {})
         chat_config = customer_service_config.get("Chat", {})
         self.max_vector_search_results = int(chat_config.get("MaxVectorSearchResults", 5))
         self.min_vector_score = float(chat_config.get("MinVectorScore", 0.8))

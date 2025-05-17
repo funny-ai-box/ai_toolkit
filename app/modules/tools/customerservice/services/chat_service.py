@@ -57,7 +57,7 @@ class ChatService(IChatService):
         self.logger = logging.getLogger(__name__)
         
         # 从配置中获取上下文消息数量限制
-        customer_service_config = settings.json.get("CustomerService", {})
+        customer_service_config = settings.get_or_default("CustomerService", {})
         chat_config = customer_service_config.get("Chat", {})
         self.max_context_messages = int(chat_config.get("MaxContextMessages", 10))
     

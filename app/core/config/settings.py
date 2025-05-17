@@ -196,6 +196,10 @@ class Settings(BaseSettings):
                 return False
             raise ValueError(f"Cannot parse as boolean: {v}")
         return v
+    
+    def get_or_default(self, key: str, default: Any):
+        """获取配置项，如果不存在则返回默认值"""
+        return getattr(self, key) if hasattr(self, key) else default
 
 
 # 创建配置实例，方便在应用中导入和使用

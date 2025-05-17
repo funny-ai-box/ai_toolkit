@@ -1,145 +1,269 @@
-# app/modules/tools/podcast/models.py
+"""
+播客模块数据库模型定义
+"""
 import datetime
-from enum import Enum
-from typing import Optional, List
-
+from typing import Optional, List, Union
 from sqlalchemy import (
-    BigInteger, String, Text, DateTime, Integer, Boolean,
-    Enum as SQLAlchemyEnum, Interval  # <--- CORRECTED IMPORT
+    BigInteger, String, Integer, Text, DateTime,
+    ForeignKey, Enum, func, Boolean, text
 )
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database.base import Base
+from app.modules.tools.podcast.constants import (
+    PodcastTaskStatus, PodcastRoleType, AudioStatusType, 
+    PodcastTaskContentType, VoiceGenderType, VoicePlatformType
+)
 
 
-from app.core.ai.speech.base import VoicePlatformType as CoreVoicePlatformType
-from app.core.database.session import Base
+class PodcastTask(Base):
+    """播客实体"""
+    __tablename__ = "podcast_task"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID"
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="UserId", comment="用户ID"
+    )
+    title: Mapped[str] = mapped_column(
+        String(255), nullable=True, name="Title", comment="播客标题"
+    )
+    description: Mapped[str] = mapped_column(
+        String(1000), nullable=True, name="Description", comment="播客描述"
+    )
+    scene: Mapped[str] = mapped_column(
+        String(100), nullable=True, name="Scene", comment="播客场景/主题"
+    )
+    atmosphere: Mapped[str] = mapped_column(
+        String(100), nullable=True, name="Atmosphere", comment="播客氛围"
+    )
+    guest_count: Mapped[int] = mapped_column(
+        Integer, default=1, name="GuestCount", comment="嘉宾数量"
+    )
+    status: Mapped[PodcastTaskStatus] = mapped_column(
+        Integer, default=PodcastTaskStatus.INIT, name="Status", 
+        comment="处理状态：0-初始化，1-待处理，2-处理中，3-处理完成，4-处理失败"
+    )
+    error_message: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True, name="ErrorMessage", comment="错误消息"
+    )
+    progress_step: Mapped[int] = mapped_column(
+        Integer, default=0, name="ProgressStep", comment="进度"
+    )
+    generate_id: Mapped[int] = mapped_column(
+        BigInteger, default=0, name="GenerateId", comment="当前的生成Id"
+    )
+    generate_count: Mapped[int] = mapped_column(
+        Integer, default=0, name="GenerateCount", comment="生成次数"
+    )
+    create_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="CreateDate", server_default=func.now(), comment="创建时间"
+    )
+    last_modify_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="LastModifyDate", server_default=func.now(), 
+        onupdate=func.now(), comment="最后修改时间"
+    )
 
 
-class AudioStatusType(int, Enum):
-    """语音生成状态枚举"""
-    PENDING = 0     # 待生成
-    PROCESSING = 1  # 生成中
-    COMPLETED = 2   # 生成完成
-    FAILED = 3      # 生成失败
+class PodcastTaskContent(Base):
+    """播客包含的内容项实体"""
+    __tablename__ = "podcast_task_content"
 
-class PodcastRoleType(int, Enum):
-    """播客角色类型枚举"""
-    HOST = 1    # 主持人
-    GUEST = 2   # 嘉宾
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID"
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="UserId", comment="用户ID"
+    )
+    podcast_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="PodcastId", comment="播客ID"
+    )
+    content_type: Mapped[PodcastTaskContentType] = mapped_column(
+        Integer, name="ContentType", 
+        comment="播客内容项类型: 1-文本，2-文档文件，3-网页地址"
+    )
+    source_document_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=True, name="SourceDocumentId", 
+        comment="源文档ID（如果是上传文档或URL）"
+    )
+    source_content: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, name="SourceContent", comment="源文本内容"
+    )
+    create_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="CreateDate", server_default=func.now(), comment="创建时间"
+    )
+    last_modify_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="LastModifyDate", server_default=func.now(), 
+        onupdate=func.now(), comment="最后修改时间"
+    )
 
-class PodcastTaskStatus(int, Enum):
-    """播客处理状态枚举"""
-    INIT = 0        # 初始化
-    PENDING = 1     # 待处理
-    PROCESSING = 2  # 开始处理
-    COMPLETED = 3   # 处理完成
-    FAILED = 4      # 处理失败
 
-class PodcastTaskContentType(int, Enum):
-    """播客内容项类型"""
-    TEXT = 1  # 文本
-    FILE = 2  # 文档文件
-    URL = 3   # 网页地址
+class PodcastTaskScript(Base):
+    """播客脚本项实体"""
+    __tablename__ = "podcast_task_script"
 
-class VoiceGenderType(int, Enum):
-    """语音性别类型"""
-    MALE = 1
-    FEMALE = 2
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID"
+    )
+    podcast_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="PodcastId", comment="播客ID"
+    )
+    history_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="HistoryId", comment="历史ID"
+    )
+    sequence_number: Mapped[int] = mapped_column(
+        Integer, nullable=False, name="SequenceNumber", comment="顺序号"
+    )
+    role_type: Mapped[PodcastRoleType] = mapped_column(
+        Integer, nullable=False, name="RoleType", 
+        comment="角色类型：1-主持人，2-嘉宾"
+    )
+    role_name: Mapped[str] = mapped_column(
+        String(50), nullable=True, name="RoleName", comment="角色名称"
+    )
+    voice_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="VoiceId", 
+        comment="语音角色ID"
+    )
+    content: Mapped[str] = mapped_column(
+        Text, nullable=False, name="Content", comment="脚本内容（无SSML标记）"
+    )
+    ssml_content: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, name="SsmlContent", comment="带SSML标记的脚本内容"
+    )
+    audio_path: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, name="AudioPath", comment="语音文件路径"
+    )
+    audio_duration: Mapped[float] = mapped_column(
+        Integer, nullable=False, name="AudioDuration", comment="语音时长（秒）"
+    )
+    audio_status: Mapped[AudioStatusType] = mapped_column(
+        Integer, default=AudioStatusType.PENDING, name="AudioStatus", 
+        comment="语音生成状态：0-待生成，1-生成中，2-生成完成，3-生成失败"
+    )
+    create_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="CreateDate", server_default=func.now(), comment="创建时间"
+    )
+    last_modify_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="LastModifyDate", server_default=func.now(), 
+        onupdate=func.now(), comment="最后修改时间"
+    )
 
 
 class PodcastScriptHistory(Base):
-    """播客脚本历史项实体"""
+    """播客脚本历史记录"""
     __tablename__ = "podcast_script_history"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id")
-    podcast_id: Mapped[int] = mapped_column(BigInteger, name="PodcastId", index=True)
-    name: Mapped[Optional[str]] = mapped_column(String(100), name="Name", nullable=True)
-    status: Mapped[PodcastTaskStatus] = mapped_column(SQLAlchemyEnum(PodcastTaskStatus), name="Status")
-    error_message: Mapped[Optional[str]] = mapped_column(String(500), name="ErrorMessage", nullable=True)
-    create_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="CreateDate", server_default=func.now())
-    last_modify_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="LastModifyDate", server_default=func.now(), onupdate=func.now())
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID"
+    )
+    podcast_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="PodcastId", comment="播客ID"
+    )
+    name: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, name="Name", comment="系统记录的创建名称"
+    )
+    status: Mapped[PodcastTaskStatus] = mapped_column(
+        Integer, default=PodcastTaskStatus.PENDING, name="Status", 
+        comment="处理状态：0-待处理，1-处理中，2-处理完成，3-处理失败"
+    )
+    error_message: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True, name="ErrorMessage", comment="错误消息"
+    )
+    create_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="CreateDate", server_default=func.now(), comment="创建时间"
+    )
+    last_modify_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="LastModifyDate", server_default=func.now(), 
+        onupdate=func.now(), comment="最后修改时间"
+    )
+
 
 class PodcastScriptHistoryItem(Base):
-    """播客脚本历史项明细实体"""
+    """播客脚本历史项目"""
     __tablename__ = "podcast_script_history_item"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id")
-    podcast_id: Mapped[int] = mapped_column(BigInteger, name="PodcastId", index=True)
-    history_id: Mapped[int] = mapped_column(BigInteger, name="HistoryId", index=True)
-    sequence_number: Mapped[int] = mapped_column(Integer, name="SequenceNumber")
-    role_type: Mapped[PodcastRoleType] = mapped_column(SQLAlchemyEnum(PodcastRoleType), name="RoleType")
-    role_name: Mapped[Optional[str]] = mapped_column(String(50), name="RoleName", nullable=True)
-    voice_id: Mapped[int] = mapped_column(BigInteger, name="VoiceId")
-    content: Mapped[Optional[str]] = mapped_column(Text, name="Content", nullable=True)
-    ssml_content: Mapped[Optional[str]] = mapped_column(Text, name="SsmlContent", nullable=True)
-    audio_path: Mapped[Optional[str]] = mapped_column(String(255), name="AudioPath", nullable=True)
-    audio_duration: Mapped[datetime.timedelta] = mapped_column(Interval, name="AudioDuration", default=datetime.timedelta(0)) # <--- CORRECTED
-    audio_status: Mapped[AudioStatusType] = mapped_column(SQLAlchemyEnum(AudioStatusType), name="AudioStatus")
-    create_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="CreateDate", server_default=func.now())
-    last_modify_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="LastModifyDate", server_default=func.now(), onupdate=func.now())
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID"
+    )
+    podcast_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="PodcastId", comment="播客ID"
+    )
+    history_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="HistoryId", comment="历史ID"
+    )
+    sequence_number: Mapped[int] = mapped_column(
+        Integer, nullable=False, name="SequenceNumber", comment="顺序号"
+    )
+    role_type: Mapped[PodcastRoleType] = mapped_column(
+        Integer, nullable=False, name="RoleType", 
+        comment="角色类型：1-主持人，2-嘉宾"
+    )
+    role_name: Mapped[str] = mapped_column(
+        String(50), nullable=True, name="RoleName", comment="角色名称"
+    )
+    voice_id: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, name="VoiceId", 
+        comment="语音角色ID"
+    )
+    content: Mapped[str] = mapped_column(
+        Text, nullable=False, name="Content", comment="脚本内容（无SSML标记）"
+    )
+    ssml_content: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, name="SsmlContent", comment="带SSML标记的脚本内容"
+    )
+    audio_path: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, name="AudioPath", comment="语音文件路径"
+    )
+    audio_duration: Mapped[float] = mapped_column(
+        Integer, nullable=False, name="AudioDuration", comment="语音时长（秒）"
+    )
+    audio_status: Mapped[AudioStatusType] = mapped_column(
+        Integer, default=AudioStatusType.PENDING, name="AudioStatus", 
+        comment="语音生成状态：0-待生成，1-生成中，2-生成完成，3-生成失败"
+    )
+    create_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="CreateDate", server_default=func.now(), comment="创建时间"
+    )
+    last_modify_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="LastModifyDate", server_default=func.now(), 
+        onupdate=func.now(), comment="最后修改时间"
+    )
 
-class PodcastTask(Base):
-    """播客任务实体"""
-    __tablename__ = "podcast_task"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id")
-    user_id: Mapped[int] = mapped_column(BigInteger, name="UserId", index=True)
-    title: Mapped[Optional[str]] = mapped_column(String(255), name="Title", nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(String(1000), name="Description", nullable=True)
-    scene: Mapped[Optional[str]] = mapped_column(String(100), name="Scene", nullable=True)
-    atmosphere: Mapped[Optional[str]] = mapped_column(String(100), name="Atmosphere", nullable=True)
-    guest_count: Mapped[int] = mapped_column(Integer, name="GuestCount", default=1)
-    status: Mapped[PodcastTaskStatus] = mapped_column(SQLAlchemyEnum(PodcastTaskStatus), name="Status")
-    error_message: Mapped[Optional[str]] = mapped_column(String(500), name="ErrorMessage", nullable=True)
-    progress_step: Mapped[int] = mapped_column(Integer, name="ProgressStep", default=0)
-    generate_id: Mapped[int] = mapped_column(BigInteger, name="GenerateId", default=0)
-    generate_count: Mapped[int] = mapped_column(Integer, name="GenerateCount", default=0)
-    create_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="CreateDate", server_default=func.now())
-    last_modify_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="LastModifyDate", server_default=func.now(), onupdate=func.now())
-
-class PodcastTaskContent(Base):
-    """播客内容项实体"""
-    __tablename__ = "podcast_task_content"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id")
-    user_id: Mapped[int] = mapped_column(BigInteger, name="UserId", index=True)
-    podcast_id: Mapped[int] = mapped_column(BigInteger, name="PodcastId", index=True)
-    content_type: Mapped[PodcastTaskContentType] = mapped_column(SQLAlchemyEnum(PodcastTaskContentType), name="ContentType")
-    source_document_id: Mapped[Optional[int]] = mapped_column(BigInteger, name="SourceDocumentId", nullable=True)
-    source_content: Mapped[Optional[str]] = mapped_column(Text, name="SourceContent", nullable=True)
-    create_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="CreateDate", server_default=func.now())
-    last_modify_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="LastModifyDate", server_default=func.now(), onupdate=func.now())
-
-class PodcastTaskScript(Base):
-    """播客脚本项实体 (当前正在使用的脚本)"""
-    __tablename__ = "podcast_task_script"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id")
-    podcast_id: Mapped[int] = mapped_column(BigInteger, name="PodcastId", index=True)
-    history_id: Mapped[int] = mapped_column(BigInteger, name="HistoryId", index=True)
-    sequence_number: Mapped[int] = mapped_column(Integer, name="SequenceNumber")
-    role_type: Mapped[PodcastRoleType] = mapped_column(SQLAlchemyEnum(PodcastRoleType), name="RoleType")
-    role_name: Mapped[Optional[str]] = mapped_column(String(50), name="RoleName", nullable=True)
-    voice_id: Mapped[int] = mapped_column(BigInteger, name="VoiceId")
-    content: Mapped[Optional[str]] = mapped_column(Text, name="Content", nullable=True)
-    ssml_content: Mapped[Optional[str]] = mapped_column(Text, name="SsmlContent", nullable=True)
-    audio_path: Mapped[Optional[str]] = mapped_column(String(255), name="AudioPath", nullable=True)
-    audio_duration: Mapped[datetime.timedelta] = mapped_column(Interval, name="AudioDuration", default=datetime.timedelta(0)) # <--- CORRECTED
-    audio_status: Mapped[AudioStatusType] = mapped_column(SQLAlchemyEnum(AudioStatusType), name="AudioStatus")
-    create_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="CreateDate", server_default=func.now())
-    last_modify_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="LastModifyDate", server_default=func.now(), onupdate=func.now())
 
 class PodcastVoiceDefinition(Base):
     """播客语音角色定义实体"""
     __tablename__ = "podcast_voice_definition"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id")
-    voice_type: Mapped[CoreVoicePlatformType] = mapped_column(SQLAlchemyEnum(CoreVoicePlatformType), name="VoiceType")
-    voice_symbol: Mapped[Optional[str]] = mapped_column(String(50), name="VoiceSymbol", nullable=True, index=True)
-    name: Mapped[Optional[str]] = mapped_column(String(100), name="Name", nullable=True)
-    locale: Mapped[Optional[str]] = mapped_column(String(20), name="Locale", nullable=True)
-    gender: Mapped[VoiceGenderType] = mapped_column(SQLAlchemyEnum(VoiceGenderType), name="Gender")
-    description: Mapped[Optional[str]] = mapped_column(String(500), name="Description", nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, name="IsActive", default=True)
-    create_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="CreateDate", server_default=func.now())
-    last_modify_date: Mapped[datetime.datetime] = mapped_column(DateTime, name="LastModifyDate", server_default=func.now(), onupdate=func.now())
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID"
+    )
+    voice_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, name="VoiceType", comment="语音类型：微软，豆包"
+    )
+    voice_symbol: Mapped[str] = mapped_column(
+        String(50), nullable=True, name="VoiceSymbol", comment="语音标识符"
+    )
+    name: Mapped[str] = mapped_column(
+        String(100), nullable=True, name="Name", comment="语音名称"
+    )
+    locale: Mapped[str] = mapped_column(
+        String(20), nullable=True, name="Locale", comment="语言/地区"
+    )
+    gender: Mapped[VoiceGenderType] = mapped_column(
+        Integer, nullable=False, name="Gender", comment="性别(Male/Female)"
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True, name="Description", comment="描述"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, name="IsActive", comment="是否启用"
+    )
+    create_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="CreateDate", server_default=func.now(), comment="创建时间"
+    )
+    last_modify_date: Mapped[datetime.datetime] = mapped_column(
+        DateTime, name="LastModifyDate", server_default=func.now(), 
+        onupdate=func.now(), comment="最后修改时间"
+    )

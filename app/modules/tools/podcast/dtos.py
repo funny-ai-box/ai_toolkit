@@ -1,155 +1,329 @@
+"""
+播客模块 DTO(数据传输对象)定义
+"""
 import datetime
-from typing import Optional, List, Annotated # Added Annotated
-from pydantic import (
-    BaseModel, Field, HttpUrl, ConfigDict, # Added ConfigDict, removed conint, constr
-    StringConstraints # Added StringConstraints
-)
-from pydantic.alias_generators import to_camel # For consistent camelCase aliasing
+from typing import List, Optional, Union
+from pydantic import BaseModel, Field, HttpUrl, validator, StringConstraints, conint
 
-from app.modules.tools.podcast.models import (
-    PodcastTaskStatus, PodcastTaskContentType, AudioStatusType, PodcastRoleType, VoiceGenderType
+from app.core.dtos import ApiResponse, PagedResultDto, BaseIdRequestDto
+from app.modules.tools.podcast.constants import (
+    PodcastTaskStatus, PodcastRoleType, AudioStatusType, 
+    PodcastTaskContentType, VoiceGenderType
 )
-# Assuming DocumentStatus is imported from knowledge module's DTOs or models
-from app.modules.base.knowledge.dtos import  DocumentStatus # Or directly from knowledge.models if preferred
 
-model_config = ConfigDict(alias_generator=lambda s: ''.join([s[0].lower(), *[c if c.islower() else f'{c}' for c in s[1:]]]), populate_by_name=True)
+
 class CreatePodcastRequestDto(BaseModel):
     """创建播客请求DTO"""
-    title: Annotated[str, StringConstraints(min_length=2, max_length=255)] = Field(..., description="播客标题")
-    description: Annotated[str, StringConstraints(max_length=1000)] = Field(..., description="播客描述")
-    scene: Annotated[str, StringConstraints(min_length=2, max_length=100)] = Field(..., description="播客场景/主题")
-    atmosphere: Annotated[str, StringConstraints(min_length=2, max_length=100)] = Field(..., description="播客氛围")
-    guest_count: int = Field(1, ge=0, le=3, description="嘉宾数量 (默认为1)")
+    title: str = Field(
+        description="播客标题", 
+        min_length=2, 
+        max_length=255
+    )
+    description: str = Field(
+        description="播客描述", 
+        max_length=1000
+    )
+    scene: str = Field(
+        description="播客场景/主题", 
+        min_length=2, 
+        max_length=100
+    )
+    atmosphere: str = Field(
+        description="播客氛围", 
+        min_length=2, 
+        max_length=100
+    )
+    guest_count: int = Field(
+        default=1, 
+        description="嘉宾数量", 
+        ge=0, 
+        le=3, 
+        alias="guestCount"
+    )
 
-    model_config = model_config
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "title": "AI科技前沿探讨",
+                "description": "探讨最新的AI技术发展和应用",
+                "scene": "科技讨论",
+                "atmosphere": "轻松专业",
+                "guestCount": 2
+            }
+        }
+    }
 
 
 class ImportPodcastUrlRequestDto(BaseModel):
     """播客导入网页请求DTO"""
-    id: int = Field(..., description="播客ID")
-    url: HttpUrl = Field(..., description="网页URL")
+    id: int = Field(description="播客ID")
+    url: HttpUrl = Field(description="网页URL")
 
-    model_config = model_config
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": 123456789,
+                "url": "https://example.com/article"
+            }
+        }
+    }
+
 
 class ImportPodcastTextRequestDto(BaseModel):
     """播客导入文本请求DTO"""
-    id: int = Field(..., description="播客ID")
-    text: Annotated[str, StringConstraints(max_length=20000)] = Field(..., description="文本内容")
+    id: int = Field(description="播客ID")
+    text: str = Field(
+        description="文本内容", 
+        max_length=20000
+    )
 
-    model_config = model_config
-
-
-class PodcastContentItemDto(BaseModel):
-    """播客内容项DTO"""
-    id: int = Field(..., description="内容项ID")
-    content_type: PodcastTaskContentType = Field(..., description="内容类型") # Alias contentType by to_camel
-    source_document_id: Optional[int] = Field(None, description="源文档ID (如果是上传文档或URL)") # Alias sourceDocumentId
-    source_content: Optional[str] = Field(None, description="文本或文件或网页的内容摘要或URL") # Alias sourceContent
-    source_document_title: Optional[str] = Field(None, description="文档标题") # Alias sourceDocumentTitle
-    source_document_original_name: Optional[str] = Field(None, description="文档原始文件名") # Alias sourceDocumentOriginalName
-    source_document_source_url: Optional[HttpUrl] = Field(None, description="文档来源链接") # Alias sourceDocumentSourceUrl
-    source_document_status: Optional[DocumentStatus] = Field(None, description="文档处理进度") # Alias sourceDocumentStatus
-    source_document_process_message: Optional[str] = Field(None, description="文档处理进度消息") # Alias sourceDocumentProcessMessage
-    create_date: datetime.datetime = Field(..., description="创建时间") # Alias createDate
-
-    model_config = model_config
-
-
-
-class PodcastScriptItemDto(BaseModel):
-    """播客脚本项DTO"""
-    id: int = Field(..., description="脚本项ID")
-    sequence_number: int = Field(..., description="顺序号") # Alias sequenceNumber
-    role_type: PodcastRoleType = Field(..., description="角色类型") # Alias roleType
-    role_type_description: Optional[str] = Field(None, description="角色类型描述") # Alias roleTypeDescription
-    role_name: Optional[str] = Field(None, description="角色名称") # Alias roleName
-    voice_symbol: Optional[str] = Field(None, description="语音角色标识符") # Alias voiceSymbol
-    voice_name: Optional[str] = Field(None, description="语音名称") # Alias voiceName
-    voice_description: Optional[str] = Field(None, description="语音描述") # Alias voiceDescription
-    audio_duration: datetime.timedelta = Field(..., description="语音时长") # Alias audioDuration
-    content: Optional[str] = Field(None, description="脚本内容 (无SSML)")
-    audio_url: Optional[str] = Field(None, description="语音文件URL") # Alias audioUrl
-    audio_status: AudioStatusType = Field(..., description="语音生成状态") # Alias audioStatus
-    audio_status_description: Optional[str] = Field(None, description="语音状态描述") # Alias audioStatusDescription
-
-    model_config = model_config
-
-
-
-class PodcastDetailDto(BaseModel):
-    """播客详情DTO"""
-    id: int = Field(..., description="播客ID")
-    title: Optional[str] = Field(None, description="播客标题")
-    description: Optional[str] = Field(None, description="播客描述")
-    scene: Optional[str] = Field(None, description="播客场景/主题")
-    atmosphere: Optional[str] = Field(None, description="播客氛围")
-    guest_count: int = Field(..., description="嘉宾数量") # Alias guestCount
-    generate_count: int = Field(..., description="生成次数") # Alias generateCount
-    progress_step: int = Field(..., description="进度 (0-100)") # Alias progressStep
-    status: PodcastTaskStatus = Field(..., description="处理状态")
-    status_description: Optional[str] = Field(None, description="状态描述") # Alias statusDescription
-    error_message: Optional[str] = Field(None, description="错误消息") # Alias errorMessage
-    content_items: Optional[List[PodcastContentItemDto]] = Field(None, description="内容项列表") # Alias contentItems
-    script_items: Optional[List[PodcastScriptItemDto]] = Field(None, description="脚本项列表") # Alias scriptItems
-    create_date: datetime.datetime = Field(..., description="创建时间") # Alias createDate
-
-    model_config = model_config
-  
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": 123456789,
+                "text": "这是要导入的文本内容..."
+            }
+        }
+    }
 
 
 class PodcastListRequestDto(BaseModel):
     """播客列表请求DTO"""
-    page_index: int = Field(1, ge=1, description="页码") # Alias pageIndex
-    page_size: int = Field(20, ge=1, le=100, description="每页数量") # Alias pageSize
+    page_index: int = Field(
+        default=1, 
+        description="页码", 
+        ge=1, 
+        alias="pageIndex"
+    )
+    page_size: int = Field(
+        default=20, 
+        description="每页大小", 
+        ge=1, 
+        le=100, 
+        alias="pageSize"
+    )
 
-    model_config = model_config
-
-class PodcastListItemDto(BaseModel):
-    """播客列表项DTO"""
-    id: int
-    title: Optional[str] = None
-    description: Optional[str] = None
-    scene: Optional[str] = None
-    atmosphere: Optional[str] = None
-    guest_count: int = Field(..., description="嘉宾数量") # Alias guestCount
-    progress_step: int = Field(..., description="进度") # Alias progressStep
-    generate_count: int = Field(..., description="生成次数") # Alias generateCount
-    status: PodcastTaskStatus
-    status_description: Optional[str] = Field(None, description="状态描述") # Alias statusDescription
-    content_item_count: int = Field(..., description="内容项数量") # Alias contentItemCount
-    script_item_count: int = Field(..., description="脚本项数量") # Alias scriptItemCount
-    create_date: datetime.datetime = Field(..., description="创建时间") # Alias createDate
-
-    model_config = model_config
-
-class TtsVoiceDefinitionDto(BaseModel):
-    """TTS语音角色定义DTO (for API response)"""
-    id: int
-    voice_symbol: Optional[str] = Field(None, description="语音角色标识符") # Alias voiceSymbol
-    name: Optional[str] = None
-    locale: Optional[str] = None
-    gender: VoiceGenderType
-    description: Optional[str] = None
-
-    model_config = model_config
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "pageIndex": 1,
+                "pageSize": 20
+            }
+        }
+    }
 
 
 class GetVoicesByLocaleRequestDto(BaseModel):
     """获取指定语言语音列表请求DTO"""
-    locale: Optional[str] = Field(None, description="语言/地区 (如zh-CN, en-US等)")
+    locale: str = Field(description="语言/地区（如zh-CN, en-US等）")
 
-    model_config = model_config
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "locale": "zh-CN"
+            }
+        }
+    }
 
 
+class TtsVoiceDefinition(BaseModel):
+    """语音角色定义DTO"""
+    id: int
+    voice_symbol: str = Field(alias="voiceSymbol")
+    name: str
+    locale: str
+    gender: VoiceGenderType
+    description: Optional[str] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": 123456789,
+                "voiceSymbol": "zh-CN-XiaoxiaoNeural",
+                "name": "晓晓",
+                "locale": "zh-CN",
+                "gender": 2,
+                "description": "女声，亲切自然"
+            }
+        }
+    }
+
+
+class PodcastContentItemDto(BaseModel):
+    """播客内容项DTO"""
+    id: int
+    content_type: PodcastTaskContentType = Field(alias="contentType")
+    source_document_id: int = Field(alias="sourceDocumentId")
+    source_content: Optional[str] = Field(default=None, alias="sourceContent")
+    source_document_title: Optional[str] = Field(default=None, alias="sourceDocumentTitle")
+    source_document_original_name: Optional[str] = Field(default=None, alias="sourceDocumentOriginalName")
+    source_document_source_url: Optional[str] = Field(default=None, alias="sourceDocumentSourceUrl")
+    source_document_status: int = Field(alias="sourceDocumentStatus")
+    source_document_process_message: Optional[str] = Field(default=None, alias="sourceDocumentProcessMessage")
+    create_date: datetime.datetime = Field(alias="createDate")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": 123456789,
+                "contentType": 2,
+                "sourceDocumentId": 987654321,
+                "sourceContent": "文档内容...",
+                "sourceDocumentTitle": "AI发展白皮书",
+                "sourceDocumentOriginalName": "ai_whitepaper.pdf",
+                "sourceDocumentSourceUrl": None,
+                "sourceDocumentStatus": 2,
+                "sourceDocumentProcessMessage": None,
+                "createDate": "2023-10-01T12:00:00"
+            }
+        }
+    }
+
+
+class PodcastScriptItemDto(BaseModel):
+    """播客脚本项DTO"""
+    id: int
+    sequence_number: int = Field(alias="sequenceNumber")
+    role_type: PodcastRoleType = Field(alias="roleType")
+    role_type_description: str = Field(alias="roleTypeDescription")
+    role_name: str = Field(alias="roleName")
+    voice_symbol: Optional[str] = Field(default=None, alias="voiceSymbol")
+    voice_name: Optional[str] = Field(default=None, alias="voiceName")
+    voice_description: Optional[str] = Field(default=None, alias="voiceDescription")
+    content: Optional[str] = None
+    audio_duration: Union[datetime.timedelta, float] = Field(alias="audioDuration")
+    audio_url: Optional[str] = Field(default=None, alias="audioUrl")
+    audio_status: AudioStatusType = Field(alias="audioStatus")
+    audio_status_description: str = Field(alias="audioStatusDescription")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": 123456789,
+                "sequenceNumber": 1,
+                "roleType": 1,
+                "roleTypeDescription": "主持人",
+                "roleName": "李主持",
+                "voiceSymbol": "zh-CN-YunyangNeural",
+                "voiceName": "云扬",
+                "voiceDescription": "男声，专业",
+                "content": "大家好，欢迎收听今天的播客...",
+                "audioDuration": 12.5,
+                "audioUrl": "https://example.com/audio/123.mp3",
+                "audioStatus": 2,
+                "audioStatusDescription": "已生成"
+            }
+        }
+    }
+
+    @validator("audio_duration", pre=True)
+    def parse_duration(cls, v):
+        """解析时长，支持timedelta对象或秒数"""
+        if isinstance(v, datetime.timedelta):
+            return v.total_seconds()
+        return float(v)
+
+
+class PodcastDetailDto(BaseModel):
+    """播客详情DTO"""
+    id: int
+    title: str
+    description: str
+    scene: str
+    atmosphere: str
+    guest_count: int = Field(alias="guestCount")
+    generate_count: int = Field(alias="generateCount")
+    progress_step: int = Field(alias="progressStep")
+    status: PodcastTaskStatus
+    status_description: str = Field(alias="statusDescription")
+    error_message: Optional[str] = Field(default=None, alias="errorMessage")
+    content_items: List[PodcastContentItemDto] = Field(alias="contentItems")
+    script_items: List[PodcastScriptItemDto] = Field(alias="scriptItems")
+    create_date: datetime.datetime = Field(alias="createDate")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": 123456789,
+                "title": "AI科技前沿探讨",
+                "description": "探讨最新的AI技术发展和应用",
+                "scene": "科技讨论",
+                "atmosphere": "轻松专业",
+                "guestCount": 2,
+                "generateCount": 1,
+                "progressStep": 100,
+                "status": 3,
+                "statusDescription": "已完成",
+                "errorMessage": None,
+                "contentItems": [],  # 示例中省略具体内容
+                "scriptItems": [],   # 示例中省略具体内容
+                "createDate": "2023-10-01T12:00:00"
+            }
+        }
+    }
+
+
+class PodcastListItemDto(BaseModel):
+    """播客列表项DTO"""
+    id: int
+    title: str
+    description: str
+    scene: str
+    atmosphere: str
+    guest_count: int = Field(alias="guestCount")
+    progress_step: int = Field(alias="progressStep")
+    generate_count: int = Field(alias="generateCount")
+    status: PodcastTaskStatus
+    status_description: str = Field(alias="statusDescription")
+    content_item_count: int = Field(alias="contentItemCount")
+    script_item_count: int = Field(alias="scriptItemCount")
+    create_date: datetime.datetime = Field(alias="createDate")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": 123456789,
+                "title": "AI科技前沿探讨",
+                "description": "探讨最新的AI技术发展和应用",
+                "scene": "科技讨论",
+                "atmosphere": "轻松专业",
+                "guestCount": 2,
+                "progressStep": 100,
+                "generateCount": 1,
+                "status": 3,
+                "statusDescription": "已完成",
+                "contentItemCount": 3,
+                "scriptItemCount": 10,
+                "createDate": "2023-10-01T12:00:00"
+            }
+        }
+    }
 
 
 class PodcastScriptRawItemDto(BaseModel):
-    """AI生成的播客脚本原始数据DTO"""
-    role_type: Optional[str] = Field(None, description="角色类型：host 或 guest") # Alias roleType
-    role_name: Optional[str] = Field(None, description="角色名称") # Alias roleName
-    voice_symbol: Optional[str] = Field(None, description="语音角色标识符") # Alias voiceSymbol
-    content: Optional[str] = Field(None, description="脚本内容 (可能包含SSML)")
-    no_ssml_content: Optional[str] = Field(None, description="脚本内容 (无SSML标记)") # Alias noSsmlContent
+    """播客脚本原始数据DTO (用于从AI获取的JSON脚本)"""
+    role_type: str = Field(alias="roleType")
+    role_name: str = Field(alias="roleName")
+    voice_symbol: str = Field(alias="voiceSymbol")
+    content: Optional[str] = None
+    no_ssml_content: Optional[str] = Field(default=None, alias="noSsmlContent")
 
-    model_config = model_config
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "roleType": "host",
+                "roleName": "李主持",
+                "voiceSymbol": "zh-CN-YunyangNeural",
+                "content": "<speak><p>大家好，欢迎收听今天的播客...</p></speak>",
+                "noSsmlContent": "大家好，欢迎收听今天的播客..."
+            }
+        }
+    }
 
+
+# API响应类型
+PodcastDetailResponse = ApiResponse[PodcastDetailDto]
+PodcastListResponse = ApiResponse[PagedResultDto[PodcastListItemDto]]
+PodcastContentItemResponse = ApiResponse[PodcastContentItemDto]
+TtsVoiceDefinitionListResponse = ApiResponse[List[TtsVoiceDefinition]]
+BaseIdResponse = ApiResponse[BaseIdRequestDto]

@@ -25,6 +25,7 @@ from app.core.dtos import ApiResponse, BaseIdRequestDto, PagedResultDto, Documen
 from app.core.exceptions import NotFoundException, BusinessException
 
 # 导入 DTO
+from app.modules.tools.customerservice.services.chat_service import ChatService
 from app.modules.tools.customerservice.services.dtos.chat_dto import (
     ChatSessionListRequestDto, ChatSessionCreateDto, ChatHistoryListRequestDto,
     ChatMessageRequestDto, ConnectionRequestDto
@@ -65,7 +66,7 @@ def _get_chat_service(
 ) -> 'IChatService':
     """内部依赖项：创建并返回 ChatService 及其内部所有依赖。"""
     # 在函数内部导入，避免循环依赖
-    from app.modules.tools.customerservice.services.chat_service import ChatService
+
     from app.modules.tools.customerservice.services.chat_ai_service import ChatAIService
     from app.modules.tools.customerservice.services.chat_tools_service import ChatToolsService
     from app.modules.tools.customerservice.services.product_service import ProductService

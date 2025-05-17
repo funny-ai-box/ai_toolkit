@@ -156,7 +156,7 @@ async def upload_file(
         上传结果
     """
     result = await file_upload_service.upload_and_process_file_async(file, current_user_id)
-    return ApiResponse[FileUploadResultDto](code=0, message="文件上传成功", data=result)
+    return ApiResponse[FileUploadResultDto](code=200, message="文件上传成功", data=result)
 
 @router.post("/files/dtl")
 async def get_file_details(
@@ -174,7 +174,7 @@ async def get_file_details(
         文件详情
     """
     result = await file_upload_service.get_file_details_async(request.id)
-    return ApiResponse[FileDetailItemDto](code=0, message="获取成功", data=result)
+    return ApiResponse[FileDetailItemDto](code=200, message="获取成功", data=result)
 
 @router.post("/files/list")
 async def get_user_files(
@@ -192,7 +192,7 @@ async def get_user_files(
         文件列表
     """
     result = await file_upload_service.get_user_files_async(current_user_id, request.page_index, request.page_size)
-    return ApiResponse[PagedResultDto[FileListItemDto]](code=0, message="获取成功", data=result)
+    return ApiResponse[PagedResultDto[FileListItemDto]](code=200, message="获取成功", data=result)
 
 @router.post("/files/datas")
 async def get_file_datas(
@@ -210,7 +210,7 @@ async def get_file_datas(
         文件里面的数据
     """
     result = await data_analysis_service.get_table_datas_async(current_user_id, request.id)
-    return ApiResponse[TempDataDto](code=0, message="获取成功", data=result)
+    return ApiResponse[TempDataDto](code=200, message="获取成功", data=result)
 
 # 分析会话管理
 @router.post("/chat/sessions/create")
@@ -229,7 +229,7 @@ async def create_session(
         会话信息
     """
     result = await data_analysis_service.create_session_async(current_user_id, create_session_dto.session_name)
-    return ApiResponse[AnalysisSessionDto](code=0, message="会话创建成功", data=result)
+    return ApiResponse[AnalysisSessionDto](code=200, message="会话创建成功", data=result)
 
 @router.post("/chat/sessions/dtl")
 async def get_session(
@@ -247,7 +247,7 @@ async def get_session(
         会话信息
     """
     result = await data_analysis_service.get_session_async(request.id, current_user_id)
-    return ApiResponse[AnalysisSessionDto](code=0, message="获取成功", data=result)
+    return ApiResponse[AnalysisSessionDto](code=200, message="获取成功", data=result)
 
 @router.post("/chat/sessions/list")
 async def get_user_sessions(
@@ -265,7 +265,7 @@ async def get_user_sessions(
         会话列表
     """
     result = await data_analysis_service.get_user_sessions_async(current_user_id, request.page_index, request.page_size)
-    return ApiResponse[PagedResultDto[SessionListItemDto]](code=0, message="获取成功", data=result)
+    return ApiResponse[PagedResultDto[SessionListItemDto]](code=200, message="获取成功", data=result)
 
 # 对话管理
 @router.post("/chat/sessions/conversationstream")
@@ -344,7 +344,7 @@ async def process_user_query(
         AI响应
     """
     result = await data_analysis_service.process_user_query_async(current_user_id, query_dto)
-    return ApiResponse[AiResponseDto](code=0, message="处理成功", data=result)
+    return ApiResponse[AiResponseDto](code=200, message="处理成功", data=result)
 
 @router.post("/chat/sessions/conversation/history")
 async def get_session_history(
@@ -365,7 +365,7 @@ async def get_session_history(
         request.page.page_index,
         request.page.page_size
     )
-    return ApiResponse[PagedResultDto[ConversationDto]](code=0, message="获取成功", data=result)
+    return ApiResponse[PagedResultDto[ConversationDto]](code=200, message="获取成功", data=result)
 
 @router.post("/chat/sessions/conversation/refreshdata")
 async def refresh_session_data(
@@ -382,7 +382,7 @@ async def refresh_session_data(
         SQL执行结果
     """
     result = await data_analysis_service.refresh_conversation_data(request.id)
-    return ApiResponse[SqlExecutionDto](code=0, message="刷新成功", data=result)
+    return ApiResponse[SqlExecutionDto](code=200, message="刷新成功", data=result)
 
 @router.post("/chat/sessions/conversation/dtl")
 async def get_conversation(
@@ -399,7 +399,7 @@ async def get_conversation(
         对话详情
     """
     result = await data_analysis_service.get_conversation_async(request.id)
-    return ApiResponse[ConversationDto](code=0, message="获取成功", data=result)
+    return ApiResponse[ConversationDto](code=200, message="获取成功", data=result)
 
 # 可视化处理
 @router.get("/visualization/{id}")
@@ -439,7 +439,7 @@ async def create_dynamic_page(
         动态页面信息
     """
     result = await data_analysis_service.create_dynamic_page_async(current_user_id, create_page_dto)
-    return ApiResponse[DynamicPageDto](code=0, message="动态页面创建成功", data=result)
+    return ApiResponse[DynamicPageDto](code=200, message="动态页面创建成功", data=result)
 
 @router.post("/pages/addsqldata")
 async def dynamic_page_add_sql_data(
@@ -457,7 +457,7 @@ async def dynamic_page_add_sql_data(
         添加的组件数量
     """
     result = await data_analysis_service.dynamic_page_add_sql_async(request)
-    return ApiResponse[int](code=0, message="SQL数据添加成功", data=result)
+    return ApiResponse[int](code=200, message="SQL数据添加成功", data=result)
 
 @router.post("/pages/dtl")
 async def get_dynamic_page(
@@ -475,7 +475,7 @@ async def get_dynamic_page(
         动态页面信息
     """
     result = await data_analysis_service.get_dynamic_page_async(request.id, current_user_id)
-    return ApiResponse[DynamicPageDto](code=0, message="获取成功", data=result)
+    return ApiResponse[DynamicPageDto](code=200, message="获取成功", data=result)
 
 @router.post("/pages/list")
 async def get_user_dynamic_pages(
@@ -493,7 +493,7 @@ async def get_user_dynamic_pages(
         动态页面列表
     """
     result = await data_analysis_service.get_user_dynamic_pages_async(current_user_id, request.page_index, request.page_size)
-    return ApiResponse[PagedResultDto[DynamicPageListItemDto]](code=0, message="获取成功", data=result)
+    return ApiResponse[PagedResultDto[DynamicPageListItemDto]](code=200, message="获取成功", data=result)
 
 @router.post("/pages/delete")
 async def delete_dynamic_page(
@@ -511,4 +511,4 @@ async def delete_dynamic_page(
         操作结果
     """
     await data_analysis_service.delete_dynamic_page_async(request.id, current_user_id)
-    return ApiResponse(code=0, message="页面已删除")
+    return ApiResponse(code=200, message="页面已删除")
