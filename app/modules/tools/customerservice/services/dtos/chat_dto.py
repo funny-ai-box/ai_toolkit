@@ -13,7 +13,10 @@ class ChatSessionListRequestDto(BaseModel):
     page_size: int = Field(20, description="每页大小", ge=1, le=100)
     include_ended: bool = Field(True, description="是否包含已结束的会话")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ChatSessionListItemDto(BaseModel):
     """聊天会话列表项DTO"""
@@ -27,7 +30,10 @@ class ChatSessionListItemDto(BaseModel):
     create_date: datetime = Field(..., description="创建时间")
     last_modify_date: datetime = Field(..., description="更新时间")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ChatSessionDto(BaseModel):
     """聊天会话DTO"""
@@ -41,13 +47,19 @@ class ChatSessionDto(BaseModel):
     create_date: datetime = Field(..., description="创建时间")
     last_modify_date: datetime = Field(..., description="更新时间")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ChatSessionCreateDto(BaseModel):
     """聊天会话创建请求DTO"""
     user_name: Optional[str] = Field(None, description="用户姓名", max_length=50)
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ChatHistoryListRequestDto(BaseModel):
     """聊天历史列表请求DTO"""
@@ -55,7 +67,10 @@ class ChatHistoryListRequestDto(BaseModel):
     page_index: int = Field(1, description="页码", ge=1)
     page_size: int = Field(20, description="每页大小", ge=1, le=100)
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ChatHistoryDto(BaseModel):
     """聊天历史DTO"""
@@ -68,14 +83,20 @@ class ChatHistoryDto(BaseModel):
     image_url: Optional[str] = Field(None, description="图片URL")
     create_date: datetime = Field(..., description="创建时间")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ChatMessageRequestDto(BaseModel):
     """聊天消息请求DTO"""
     session_id: int = Field(..., description="会话ID")
     content: str = Field(..., description="消息内容")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ChatMessageResultDto(BaseModel):
     """聊天消息结果DTO"""
@@ -87,7 +108,10 @@ class ChatMessageResultDto(BaseModel):
     success: bool = Field(True, description="是否成功")
     error_message: Optional[str] = Field(None, description="错误消息")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class MessageChunkDto(BaseModel):
     """消息块DTO"""
@@ -96,7 +120,10 @@ class MessageChunkDto(BaseModel):
     event: Optional[str] = Field(None, description="事件类型")
     data: Optional[str] = Field(None, description="数据内容")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class IntentRecognitionResultDto(BaseModel):
     """意图识别结果DTO"""
@@ -104,14 +131,20 @@ class IntentRecognitionResultDto(BaseModel):
     context: Optional[str] = Field(None, description="工具的响应结果")
     id_datas: Optional[List[str]] = Field(None, description="响应的结果，ID")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ImageAnalysisResultDto(BaseModel):
     """图片分析结果DTO"""
     description: Optional[str] = Field(None, description="图片描述")
     tags: Optional[List[str]] = Field(None, description="识别到的标签")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class ConnectionRequestDto(BaseModel):
     """实时连接建立请求DTO"""
@@ -119,7 +152,10 @@ class ConnectionRequestDto(BaseModel):
     connection_id: str = Field(..., description="连接ID")
     client_type: str = Field(..., description="客户端类型")
     
-    model_config = ConfigDict(alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_'))))
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda s: ''.join(x.capitalize() if i else x for i, x in enumerate(s.split('_')))
+    )
 
 class MessageEventType(str, Enum):
     """流式消息事件类型"""

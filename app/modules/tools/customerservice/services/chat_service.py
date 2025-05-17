@@ -62,27 +62,17 @@ class ChatService(IChatService):
         self.max_context_messages = int(chat_config.get("MaxContextMessages", 10))
     
     async def create_session_async(self, user_id: int, user_name: str) -> ChatSessionDto:
-        """
-        创建会话
-        
-        Args:
-            user_id: 用户ID
-            user_name: 用户姓名
-            
-        Returns:
-            会话信息
-        """
         try:
             session = ChatSession(
                 user_id=user_id,
                 user_name=user_name,
-                session_name=f"{user_name}的会话", # 可以根据需要自定义会话名称
+                session_name=f"{user_name}的会话",
                 status=ChatSessionStatus.ACTIVE.value
             )
             
             await self.session_repository.create_async(session)
             
-            # 添加一条系统欢迎消息
+            # Add a system welcome message
             welcome_message = ChatHistory(
                 session_id=session.id,
                 role=ChatRoleType.ASSISTANT,
@@ -91,16 +81,16 @@ class ChatService(IChatService):
             
             await self.history_repository.add_async(welcome_message)
             
-            # 构建结果
+            # Build the result - use camelCase field names to match DTO expectations
             result = ChatSessionDto(
                 id=session.id,
-                user_id=session.user_id,
+                userId=session.user_id,  # Change from user_id to userId
                 user_name=session.user_name,
                 session_name=session.session_name,
                 status=session.status,
                 session_key=session.session_key,
-                create_date=session.create_date,
-                last_modify_date=session.last_modify_date,
+                createDate=session.create_date,  # Change from create_date to createDate
+                lastModifyDate=session.last_modify_date,  # Change from last_modify_date to lastModifyDate
                 recent_history=[
                     ChatHistoryDto(
                         id=welcome_message.id,
@@ -116,7 +106,6 @@ class ChatService(IChatService):
         except Exception as ex:
             self.logger.error(f"创建会话失败，用户ID: {user_id}, 用户名: {user_name}, 错误: {str(ex)}")
             raise
-    
     async def get_session_async(self, user_id: int, session_id: int) -> Optional[ChatSessionDto]:
         """
         获取会话
@@ -551,13 +540,13 @@ class ChatService(IChatService):
         """
         return ChatSessionDto(
             id=session.id,
-            user_id=session.user_id,
+            userId=session.user_id,  # Change from user_id to userId
             user_name=session.user_name,
             session_name=session.session_name,
             status=session.status,
             session_key=session.session_key,
-            create_date=session.create_date,
-            last_modify_date=session.last_modify_date,
+            createDate=session.create_date,  # Change from create_date to createDate
+            lastModifyDate=session.last_modify_date,  # Change from last_modify_date to lastModifyDate
             recent_history=[
                 ChatHistoryDto(
                     id=h.id,
