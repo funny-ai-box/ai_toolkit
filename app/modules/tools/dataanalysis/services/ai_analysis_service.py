@@ -8,21 +8,21 @@ from app.core.utils import json_utils
 from app.modules.tools.dataanalysis.models import DataTable
 from app.modules.tools.dataanalysis.dtos import OpenAiResponseDto, SqlQueryDto
 from app.modules.base.prompts.services import PromptTemplateService
+from app.core.ai.dtos import InputMessage, ChatRoleType, InputTextContent
 
 class AIAnalysisService:
     """AI 分析服务实现"""
     
-    def __init__(self, ai_service: IChatAIService,prompt_template_service: PromptTemplateService):
+    def __init__(self, ai_service: IChatAIService, prompt_template_service: PromptTemplateService):
         """
         初始化 AI 分析服务
         
         Args:
             ai_service: AI 服务
-       
+            prompt_template_service: 提示词模板服务
         """
         self.prompt_template_service = prompt_template_service
         self.ai_service = ai_service
-    
     
     async def get_completion_async(self, prompt: str) -> str:
         """
@@ -34,10 +34,18 @@ class AIAnalysisService:
         Returns:
             AI响应内容
         """
-        messages = [
-            {"role": "system", "content": "你是一个专业的数据分析师和SQL专家。"},
-            {"role": "user", "content": prompt}
-        ]
+        # Create properly structured InputMessage objects
+        system_message = InputMessage(
+            role=ChatRoleType.SYSTEM,  # Use enum value
+            content=[InputTextContent(type="text", text="你是一个专业的数据分析师和SQL专家。")]
+        )
+        
+        user_message = InputMessage(
+            role=ChatRoleType.USER,  # Use enum value
+            content=[InputTextContent(type="text", text=prompt)]
+        )
+        
+        messages = [system_message, user_message]
         return await self.ai_service.chat_completion_async(messages)
     
     async def pre_select_tables_async(self, query: str, tables: List[DataTable]) -> List[int]:
@@ -68,9 +76,13 @@ class AIAnalysisService:
         system_prompt = system_prompt.replace("{Query}", query)
         system_prompt = system_prompt.replace("{Tables}", prompt_tables_text)
         
-        messages = [
-            {"role": "system", "content": system_prompt}
-        ]
+        # Create a properly structured InputMessage object
+        system_message = InputMessage(
+            role=ChatRoleType.SYSTEM,  # Use enum value
+            content=[InputTextContent(type="text", text=system_prompt)]
+        )
+        
+        messages = [system_message]
         
         # 调用AI
         try:
@@ -125,10 +137,18 @@ class AIAnalysisService:
             # 加入表结构描述
             table_prompt = await self._build_data_analysis_table_prompt_async(query, selected_tables)
             
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "system", "content": table_prompt}
-            ]
+            # Create properly structured InputMessage objects
+            system_message1 = InputMessage(
+                role=ChatRoleType.SYSTEM,  # Use enum value
+                content=[InputTextContent(type="text", text=system_prompt)]
+            )
+            
+            system_message2 = InputMessage(
+                role=ChatRoleType.SYSTEM,  # Use enum value
+                content=[InputTextContent(type="text", text=table_prompt)]
+            )
+            
+            messages = [system_message1, system_message2]
             
             # 调用AI API
             response = await self.ai_service.chat_completion_async(messages)
@@ -138,7 +158,7 @@ class AIAnalysisService:
                 response = self._replace_control_chars_with_space(response)
                 
                 # 解析响应
-                return json_utils.parse_json(response, OpenAiResponseDto)
+                return OpenAiResponseDto(**json.loads(response))
             except Exception as ex:
                 print(f"解析AI响应失败: {str(ex)}")
                 
@@ -181,10 +201,18 @@ class AIAnalysisService:
             # 加入表结构描述
             table_prompt = await self._build_data_analysis_table_prompt_async(query, selected_tables)
             
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "system", "content": table_prompt}
-            ]
+            # Create properly structured InputMessage objects
+            system_message1 = InputMessage(
+                role=ChatRoleType.SYSTEM,  # Use enum value
+                content=[InputTextContent(type="text", text=system_prompt)]
+            )
+            
+            system_message2 = InputMessage(
+                role=ChatRoleType.SYSTEM,  # Use enum value
+                content=[InputTextContent(type="text", text=table_prompt)]
+            )
+            
+            messages = [system_message1, system_message2]
             
             # 调用流式API
             return await self.ai_service.streaming_chat_completion_async(

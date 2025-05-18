@@ -6,9 +6,9 @@ from typing import List, Optional, Union
 # --- 枚举 ---
 class ChatRoleType(str, Enum):
     """对话角色类型"""
-    SYSTEM = 0
-    ASSISTANT = 1
-    USER = 2
+    SYSTEM = 'system'
+    ASSISTANT = 'assistant'
+    USER = 'user'
     # OpenAI 还支持 Tool Role，如果需要可以添加
     # TOOL = "tool"
 
