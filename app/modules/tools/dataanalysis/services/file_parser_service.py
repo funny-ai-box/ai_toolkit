@@ -8,6 +8,7 @@ import datetime
 from typing import List, Tuple, Optional, Dict, Any
 import logging
 
+
 from app.core.ai.chat.base import IChatAIService
 from app.modules.tools.dataanalysis.models import TableColumn
 

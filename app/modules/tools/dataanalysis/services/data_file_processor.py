@@ -178,6 +178,16 @@ class DataFileProcessor:
             
         except Exception as ex:
             print(f"处理文件失败: {upload_file.original_file_name}, 错误: {str(ex)}")
+            import traceback
+            traceback.print_exc()
+
+            if 'df' in locals() and df is not None and not df.empty:
+                print("Sample DataFrame data (first 2 rows):")
+                print(df.head(2))
+                print("DataFrame info:")
+                print(df.info())
+                print("DataFrame types:")
+                print(df.dtypes)
             
             # 更新文件状态为解析失败
             upload_file.status = 3  # 解析失败

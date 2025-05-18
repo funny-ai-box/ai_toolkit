@@ -1,4 +1,5 @@
 # app/modules/dataanalysis/repositories/data_table_repository.py
+import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 from typing import List, Optional, Tuple
@@ -238,65 +239,90 @@ class DataTableRepository:
     
     async def bulk_insert_data_async(self, table_name: str, df: pd.DataFrame) -> int:
         """
-        批量插入数据到动态表
+        Batch insert data into a dynamic table
         
         Args:
-            table_name: 表名
-            df: pandas DataFrame对象
+            table_name: Table name
+            df: pandas DataFrame object
         
         Returns:
-            插入行数
+            Number of inserted rows
         """
         if df is None or df.empty:
-            raise BusinessException("无效的数据格式")
+            raise BusinessException("Invalid data format")
         
-        # 获取列名列表
+        # Import necessary modules
+        import numpy as np
+        import datetime
+        
+        # Get column names
         columns = list(df.columns)
         if not columns:
             return 0
         
-        # 处理数据批量插入
-        # 通过构建批量INSERT语句
-        batch_size = 1000  # 每批次处理的记录数
+        # Helper function to format values for SQL
+        def format_sql_value(val):
+            if pd.isna(val):
+                return "NULL"
+            elif isinstance(val, (str, bytes)):
+                # Double single quotes for SQL escaping
+                escaped_val = str(val).replace("'", "''")
+                return "'" + escaped_val + "'"
+            elif isinstance(val, (int, np.integer)):
+                return str(int(val))
+            elif isinstance(val, (float, np.floating)):
+                return str(float(val))
+            elif isinstance(val, (datetime.datetime, pd.Timestamp)):
+                return "'" + val.strftime('%Y-%m-%d %H:%M:%S') + "'"
+            elif isinstance(val, datetime.date):
+                return "'" + val.strftime('%Y-%m-%d') + "'"
+            elif isinstance(val, bool):
+                return "1" if val else "0"
+            else:
+                # For any other type, convert to string and quote
+                escaped_val = str(val).replace("'", "''")
+                return "'" + escaped_val + "'"
+        
         total_inserted = 0
         
-        for i in range(0, len(df), batch_size):
-            batch_df = df.iloc[i:i+batch_size]
-            if batch_df.empty:
-                continue
-            
-            # 构建插入语句
-            placeholders = ", ".join(["%s"] * len(columns))
-            columns_str = ", ".join([f"`{col}`" for col in columns])
-            
-            insert_sql = f"INSERT INTO `{table_name}` ({columns_str}) VALUES "
-            
-            # 添加值
-            values_list = []
-            params = []
-            
-            for _, row in batch_df.iterrows():
-                row_values = []
-                for col in columns:
-                    val = row[col]
-                    if pd.isna(val):
-                        row_values.append("NULL")
-                    else:
-                        row_values.append("%s")
-                        params.append(val)
+        try:
+            # Process each row individually
+            for idx, row in df.iterrows():
+                try:
+                    cols = []
+                    vals = []
+                    
+                    for col in columns:
+                        cols.append("`" + col + "`")
+                        vals.append(format_sql_value(row[col]))
+                    
+                    cols_str = ", ".join(cols)
+                    vals_str = ", ".join(vals)
+                    
+                    raw_sql = "INSERT INTO `" + table_name + "` (" + cols_str + ") VALUES (" + vals_str + ")"
+                    
+                    # Execute the raw SQL
+                    await self.db.execute(text(raw_sql))
+                    total_inserted += 1
+                    
+                    # Commit every 50 rows
+                    if total_inserted % 50 == 0:
+                        await self.db.commit()
                 
-                values_list.append(f"({', '.join(row_values)})")
+                except Exception as e:
+                    print(f"Error inserting row {idx}: {str(e)}")
+                    # Continue with next row
+                    continue
             
-            insert_sql += ", ".join(values_list)
+            # Final commit
+            await self.db.commit()
             
-            # 执行SQL
-            await self.db.execute(text(insert_sql), params)
-            total_inserted += len(batch_df)
+        except Exception as e:
+            print(f"Bulk insert error: {str(e)}")
+            raise
         
-        await self.db.flush()
-        await self.db.commit()  # 添加commit确保数据持久化
         return total_inserted
-    
+        
     async def drop_temp_table_async(self, table_name: str) -> int:
         """
         如果解析失败，则删除临时表

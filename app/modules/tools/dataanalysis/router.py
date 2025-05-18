@@ -101,7 +101,7 @@ def _get_file_upload_service(
 def _get_file_parser_service(
     ai_service: IChatAIService = Depends(get_chatai_service_from_state)
 ) -> "FileParserService":
-    """创建并返回 FileParserService"""
+    """Creates and returns FileParserService"""
     from app.modules.tools.dataanalysis.services.file_parser_service import FileParserService
     
     return FileParserService(
@@ -165,7 +165,7 @@ def _get_data_analysis_service(
         dynamic_page_repository=dynamic_page_repository,
         page_component_repository=page_component_repository,
         ai_analysis_service=ai_analysis_service,
-        job_persistence_service=job_persistence_service
+
     )
 
 def _get_data_file_processor(
