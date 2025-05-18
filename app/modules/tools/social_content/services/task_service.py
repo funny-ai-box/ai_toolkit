@@ -274,7 +274,7 @@ class TaskService:
 
         try:
             await self.task_repository.update_task_status_async(
-                task_id, GenerationTaskStatus.PROCESSING, "开始处理任务", 0.0
+                task_id, int(GenerationTaskStatus.PROCESSING), "开始处理任务", 0.0
             )
 
             task_images = await self.task_repository.get_task_images_async(task_id)
@@ -286,7 +286,7 @@ class TaskService:
             total_platforms = len(task_platforms) if task_platforms else 0 # Handle empty list
 
             await self.task_repository.update_task_status_async(
-                task_id, GenerationTaskStatus.PROCESSING,
+                task_id, int(GenerationTaskStatus.PROCESSING),
                 "图片处理完成，准备生成内容",
                 self._calculate_completion_rate(0, total_platforms) # Start with 0 platforms processed for content
             )

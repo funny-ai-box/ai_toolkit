@@ -37,7 +37,7 @@ class TaskRepository:
         """
         try:
             task.id = generate_id()
-            task.status = GenerationTaskStatus.PENDING
+            task.status = int(GenerationTaskStatus.PENDING)
             task.completion_rate = 0
             now = datetime.datetime.now()
             task.create_date = now
@@ -192,7 +192,7 @@ class TaskRepository:
         """
         try:
             task_platform.id = generate_id()
-            task_platform.status = GenerationTaskStatus.PENDING
+            task_platform.status = int(GenerationTaskStatus.PENDING)
             now = datetime.datetime.now()
             task_platform.create_date = now
             task_platform.last_modify_date = now
@@ -221,7 +221,7 @@ class TaskRepository:
             query = update(GenerationTaskPlatform).where(
                 GenerationTaskPlatform.id == id
             ).values(
-                status=status,
+                status=int(status),
                 last_modify_date=datetime.datetime.now()
             )
             
