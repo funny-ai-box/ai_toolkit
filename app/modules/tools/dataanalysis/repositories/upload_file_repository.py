@@ -24,7 +24,7 @@ class UploadFileRepository:
         
         Args:
             upload_file: 文件上传实体
-        
+            
         Returns:
             添加后的实体
         """
@@ -39,6 +39,7 @@ class UploadFileRepository:
         # 插入数据
         self.db.add(upload_file)
         await self.db.flush()
+        await self.db.commit()  # 添加commit以确保数据持久化
         
         return upload_file
     
@@ -48,7 +49,7 @@ class UploadFileRepository:
         
         Args:
             upload_file: 文件上传实体
-        
+            
         Returns:
             更新后的实体
         """
@@ -58,6 +59,7 @@ class UploadFileRepository:
         # 更新数据
         self.db.add(upload_file)
         await self.db.flush()
+        await self.db.commit()  # 添加commit以确保数据持久化
         
         return upload_file
     
@@ -67,7 +69,7 @@ class UploadFileRepository:
         
         Args:
             id: 文件上传ID
-        
+            
         Returns:
             文件上传实体
         """
@@ -82,7 +84,7 @@ class UploadFileRepository:
         
         Args:
             user_id: 用户ID
-        
+            
         Returns:
             文件上传实体列表
         """
@@ -99,7 +101,7 @@ class UploadFileRepository:
         
         Args:
             id: 文件上传ID
-        
+            
         Returns:
             是否成功
         """
@@ -107,6 +109,7 @@ class UploadFileRepository:
         if upload_file:
             await self.db.delete(upload_file)
             await self.db.flush()
+            await self.db.commit()  # 添加commit以确保数据持久化
             return True
         return False
     
@@ -116,7 +119,7 @@ class UploadFileRepository:
         
         Args:
             limit: 数量限制
-        
+            
         Returns:
             文档实体列表
         """

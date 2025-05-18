@@ -43,6 +43,7 @@ class DataTableRepository:
         # 插入数据
         self.db.add(data_table)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return data_table
     
@@ -62,6 +63,7 @@ class DataTableRepository:
         # 更新数据
         self.db.add(data_table)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return data_table
     
@@ -143,6 +145,7 @@ class DataTableRepository:
         # 删除数据表记录
         await self.db.delete(data_table)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return True
     
@@ -227,6 +230,7 @@ class DataTableRepository:
         try:
             sql = "\n".join(sql_parts)
             await self.db.execute(text(sql))
+            await self.db.commit()  # 添加commit确保数据持久化
             return True
         except Exception as ex:
             # 记录错误日志
@@ -290,6 +294,7 @@ class DataTableRepository:
             total_inserted += len(batch_df)
         
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         return total_inserted
     
     async def drop_temp_table_async(self, table_name: str) -> int:
@@ -304,6 +309,7 @@ class DataTableRepository:
         """
         sql = f"DROP TABLE IF EXISTS `{table_name}`;"
         result = await self.db.execute(text(sql))
+        await self.db.commit()  # 添加commit确保数据持久化
         return result.rowcount if hasattr(result, 'rowcount') else 0
     
     def _get_mysql_data_type(self, data_type: str) -> str:

@@ -43,7 +43,7 @@ class JobPersistenceService:
             task_type=task_type,
             params_id=params_id,
             params_data=json.dumps(params_data) if params_data else None,
-            status=JobStatus.PENDING,
+            status=int(JobStatus.PENDING), # 使用枚举成员的整数值
             retry_count=0,
             max_retries=final_max_retries,
             scheduled_at=scheduled_at,
@@ -73,9 +73,9 @@ class JobPersistenceService:
         stmt = (
             update(JobPersist)
             .where(JobPersist.id == job_id)
-            .where(JobPersist.status == JobStatus.PENDING) # 使用枚举成员比较
+            .where(JobPersist.status ==int(JobStatus.PENDING)) # 使用枚举成员比较
             .values(
-                status=JobStatus.PROCESSING, # 使用枚举成员赋值
+                status=JobStatus.PROCESSING.value, # 使用枚举成员赋值
                 started_at=now,
                 last_modify_date=now # 手动更新时间戳 (或者依赖 onupdate)
             )
@@ -118,7 +118,7 @@ class JobPersistenceService:
         should_retry = False
         if can_retry and job.retry_count < job.max_retries:
             should_retry = True
-            new_status = JobStatus.PENDING
+            new_status = int(JobStatus.PENDING)
             new_retry_count = job.retry_count + 1
             retry_delay_seconds = 60 * (new_retry_count)
             new_scheduled_at = datetime.datetime.now() + datetime.timedelta(seconds=retry_delay_seconds)
@@ -189,7 +189,7 @@ class JobPersistenceService:
         now = datetime.datetime.now()
         log_entry = JobPersistLog(
             job_id=job_id,
-            level=level,
+            level=level.value,
             message=message,
             timestamp = now,
         )
@@ -201,7 +201,7 @@ class JobPersistenceService:
         now = datetime.datetime.now()
         stmt = (
             select(JobPersist)
-            .where(JobPersist.status == JobStatus.PENDING)
+            .where(JobPersist.status ==int( JobStatus.PENDING))
             .where( (JobPersist.scheduled_at == None) | (JobPersist.scheduled_at <= now) )
             .order_by(JobPersist.create_date.asc()) # 使用 create_date
             .limit(limit)

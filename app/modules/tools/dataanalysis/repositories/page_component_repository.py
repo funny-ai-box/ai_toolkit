@@ -40,6 +40,7 @@ class PageComponentRepository:
         # 插入数据
         self.db.add(page_component)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return page_component
     
@@ -59,6 +60,7 @@ class PageComponentRepository:
         # 更新数据
         self.db.add(page_component)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return page_component
     
@@ -107,4 +109,5 @@ class PageComponentRepository:
         result = await self.db.execute(
             delete(PageComponent).filter(PageComponent.id == id)
         )
+        await self.db.commit()  # 添加commit确保数据持久化
         return result.rowcount > 0

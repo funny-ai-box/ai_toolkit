@@ -40,6 +40,7 @@ class TableColumnRepository:
         # 插入数据
         self.db.add(table_column)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return table_column
     
@@ -66,6 +67,7 @@ class TableColumnRepository:
         # 批量插入
         self.db.add_all(table_columns)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return True
     
@@ -85,6 +87,7 @@ class TableColumnRepository:
         # 更新数据
         self.db.add(table_column)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return table_column
     
@@ -133,6 +136,7 @@ class TableColumnRepository:
         result = await self.db.execute(
             delete(TableColumn).filter(TableColumn.id == id)
         )
+        await self.db.commit()  # 添加commit确保数据持久化
         return result.rowcount > 0
     
     async def delete_by_table_id_async(self, table_id: int) -> bool:
@@ -148,4 +152,5 @@ class TableColumnRepository:
         result = await self.db.execute(
             delete(TableColumn).filter(TableColumn.table_id == table_id)
         )
+        await self.db.commit()  # 添加commit确保数据持久化
         return result.rowcount > 0

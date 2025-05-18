@@ -41,6 +41,7 @@ class ConversationRepository:
         # 插入数据
         self.db.add(conversation)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return conversation
     
@@ -60,6 +61,7 @@ class ConversationRepository:
         # 更新数据
         self.db.add(conversation)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return conversation
     

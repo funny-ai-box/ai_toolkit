@@ -39,6 +39,7 @@ class ImportLogRepository:
         # 插入数据
         self.db.add(import_log)
         await self.db.flush()
+        await self.db.commit()
         
         return import_log
     
@@ -58,6 +59,7 @@ class ImportLogRepository:
         # 更新数据
         self.db.add(import_log)
         await self.db.flush()
+        await self.db.commit()
         
         return import_log
     

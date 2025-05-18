@@ -16,7 +16,7 @@ from app.core.config.settings import settings
 import json # 用于解析 params_data
 
 logger = logging.getLogger(__name__)
-
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 # 全局调度器实例
 scheduler = AsyncIOScheduler(timezone="Asia/Shanghai") # 使用配置的时区
 

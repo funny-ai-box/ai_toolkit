@@ -87,6 +87,7 @@ class SqlExecutionRepository:
         # 插入数据
         self.db.add(sql_execution)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return sql_execution
     
@@ -106,6 +107,7 @@ class SqlExecutionRepository:
         # 更新数据
         self.db.add(sql_execution)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return sql_execution
     

@@ -108,7 +108,7 @@ class DocumentRepository:
 
         count_stmt = select(func.count(Document.id)).where( # 使用 count(主键) 可能更精确
             Document.user_id == user_id,
-            Document.app_type == app_type
+            Document.app_type == int(app_type)
         )
         total_count_result = await self.db.execute(count_stmt)
         total_count = total_count_result.scalar_one() or 0
@@ -118,7 +118,7 @@ class DocumentRepository:
 
         data_stmt = select(Document).where(
             Document.user_id == user_id,
-            Document.app_type == app_type
+            Document.app_type == int(app_type)
         ).order_by(Document.id.desc()).offset(offset).limit(page_size)
 
         data_result = await self.db.execute(data_stmt)

@@ -1,9 +1,8 @@
-# app/modules/dataanalysis/repositories/analysis_session_repository.py (continued)
+# app/modules/dataanalysis/repositories/analysis_session_repository.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from typing import List, Optional
 import datetime
-
 
 from app.core.utils.snowflake import generate_id
 from app.modules.tools.dataanalysis.models import AnalysisSession
@@ -41,6 +40,7 @@ class AnalysisSessionRepository:
         # 插入数据
         self.db.add(session)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return session
     
@@ -60,6 +60,7 @@ class AnalysisSessionRepository:
         # 更新数据
         self.db.add(session)
         await self.db.flush()
+        await self.db.commit()  # 添加commit确保数据持久化
         
         return session
     
@@ -125,4 +126,5 @@ class AnalysisSessionRepository:
         result = await self.db.execute(
             delete(AnalysisSession).filter(AnalysisSession.id == id)
         )
+        await self.db.commit()  # 添加commit确保数据持久化
         return result.rowcount > 0

@@ -25,7 +25,7 @@ class DynamicPageRepository:
         
         Args:
             dynamic_page: 动态页面实体
-        
+            
         Returns:
             添加后的实体
         """
@@ -40,16 +40,17 @@ class DynamicPageRepository:
         # 插入数据
         self.db.add(dynamic_page)
         await self.db.flush()
+        await self.db.commit()
         
         return dynamic_page
-    
+
     async def update_async(self, dynamic_page: DynamicPage) -> DynamicPage:
         """
         更新动态页面
         
         Args:
             dynamic_page: 动态页面实体
-        
+            
         Returns:
             更新后的实体
         """
@@ -59,6 +60,7 @@ class DynamicPageRepository:
         # 更新数据
         self.db.add(dynamic_page)
         await self.db.flush()
+        await self.db.commit()
         
         return dynamic_page
     
@@ -100,7 +102,7 @@ class DynamicPageRepository:
         
         Args:
             id: 动态页面ID
-        
+            
         Returns:
             是否成功
         """
@@ -114,4 +116,7 @@ class DynamicPageRepository:
             delete(DynamicPage).filter(DynamicPage.id == id)
         )
         
+        await self.db.commit()
+        
         return result.rowcount > 0
+

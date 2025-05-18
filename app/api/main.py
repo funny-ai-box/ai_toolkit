@@ -5,14 +5,16 @@ from typing import Optional, Dict
 from fastapi import FastAPI, Depends, Request, status
 from contextlib import asynccontextmanager
 import httpx
+from app.core.config.settings import settings
 
 # --- 配置日志记录 ---
 from app.core.logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__) # 获取 main 模块的 logger
 # ----------------------------------------------------
+settings.DATABASE_ECHO = False
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 
-from app.core.config.settings import settings
 from app.core.database.session import engine, Base
 from app.api.middleware.exception_handlers import register_exception_handlers
 from app.core.redis.service import RedisService
@@ -156,13 +158,13 @@ async def lifespan(app: FastAPI):
     except Exception as e: logger.error(f"初始化 Speech Service 失败: {e}", exc_info=True)
 
     # 2. 启动 APScheduler
-    #start_scheduler() # <--- 调用启动函数
+    start_scheduler() # <--- 调用启动函数
 
     yield # 应用运行
 
     logger.info("--- 应用关闭 ---")
     # 3. 关闭 APScheduler
-    #stop_scheduler() # <--- 调用关闭函数
+    stop_scheduler() # <--- 调用关闭函数
     
     # 4. 关闭共享 HTTP 客户端
     if hasattr(app.state, 'http_client') and app.state.http_client:

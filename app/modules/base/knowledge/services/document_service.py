@@ -87,17 +87,16 @@ class DocumentService:
     # --- API 直接调用的方法 ---
 
     async def upload_document_async(
-        self, user_id: int, app_type: DocumentAppType, file: UploadFile,
-        title: str = "", reference_id: int = 0,
-        need_vector: bool = True, need_graph: bool = True
-    ) -> int:
+    self, user_id: int, app_type: DocumentAppType, file: UploadFile,
+    title: str = "", reference_id: int = 0,
+    need_vector: bool = True, need_graph: bool = True
+) -> int:
         """处理文档上传，保存记录，并触发后台处理任务"""
-        # ... (验证和上传逻辑与之前相同) ...
         is_valid, error_message = validate_document_file(file, self.supported_extensions)
         if not is_valid:
             raise ValidationException(error_message)
         if self.storage_service is None:
-             raise BusinessException("存储服务未配置，无法上传文件。", code=503)
+            raise BusinessException("存储服务未配置，无法上传文件。", code=503)
 
         original_filename = file.filename or "unknown_file"
         file_extension = Path(original_filename).suffix
@@ -117,22 +116,32 @@ class DocumentService:
             print(f"上传文件到存储服务失败: {e}", exc_info=True)
             raise BusinessException(f"文件上传失败: {str(e)}") from e
         finally:
-             await file.close()
+            await file.close()
 
+        # Create document - IMPORTANT FIX: Explicitly convert app_type enum to integer value
         document = Document(
-            user_id=user_id, reference_id=reference_id,
-            title=title or Path(original_filename).stem, app_type=app_type,
-            type="file", original_name=original_filename, cdn_url=cdn_url,
-            file_size=len(file_content), is_need_vector=need_vector,
-            is_need_graph=need_graph, status=DocumentStatus.PENDING,
-            vector_status=DocumentStatus.PENDING, graph_status=DocumentStatus.PENDING
+            user_id=user_id, 
+            reference_id=reference_id,
+            title=title or Path(original_filename).stem, 
+            app_type=int(app_type.value),  # Convert enum to integer! This is the fix
+            type="file", 
+            original_name=original_filename, 
+            cdn_url=cdn_url,
+            file_size=len(file_content), 
+            is_need_vector=need_vector,
+            is_need_graph=need_graph, 
+            status=int(DocumentStatus.PENDING),  # Also convert status enum
+            vector_status=int(DocumentStatus.PENDING),  # Also convert status enum
+            graph_status=int(DocumentStatus.PENDING)   # Also convert status enum
         )
 
         try:
             document_id = await self.document_repository.add_document_async(document)
             await self.document_log_repository.add_document_log_async(DocumentLog(
-                user_id=user_id, document_id=document_id,
-                log_type=DocumentLogType.DOCUMENT_PARSING, message="文档已上传，等待后台解析"
+                user_id=user_id, 
+                document_id=document_id,
+                log_type=int(DocumentLogType.DOCUMENT_PARSING),  # Convert enum to integer
+                message="文档已上传，等待后台解析"
             ))
 
             # --- 调用 JobPersistenceService 创建任务 ---
@@ -155,7 +164,6 @@ class DocumentService:
                 try: await self.storage_service.delete_async(file_key)
                 except Exception as del_e: logger.error(f"回滚删除文件失败: {file_key} - {del_e}")
             raise BusinessException("保存文档信息失败") from e
-
 
     async def import_web_page_async(
         self, user_id: int, app_type: DocumentAppType, url: str,

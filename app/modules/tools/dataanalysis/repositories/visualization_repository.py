@@ -47,6 +47,7 @@ class VisualizationRepository:
         # 插入数据
         self.db.add(visualization)
         await self.db.flush()
+        await self.db.commit()
         
         return visualization
     
@@ -66,6 +67,7 @@ class VisualizationRepository:
         # 更新数据
         self.db.add(visualization)
         await self.db.flush()
+        await self.db.commit()
         
         return visualization
     
@@ -123,4 +125,5 @@ class VisualizationRepository:
         # 保存HTML文件
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(html_content)
-        
+            
+        return file_path
