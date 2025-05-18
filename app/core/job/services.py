@@ -118,7 +118,7 @@ class JobPersistenceService:
         should_retry = False
         if can_retry and job.retry_count < job.max_retries:
             should_retry = True
-            new_status = int(JobStatus.PENDING)
+            new_status = JobStatus.PENDING
             new_retry_count = job.retry_count + 1
             retry_delay_seconds = 60 * (new_retry_count)
             new_scheduled_at = datetime.datetime.now() + datetime.timedelta(seconds=retry_delay_seconds)
@@ -155,7 +155,7 @@ class JobPersistenceService:
         now = datetime.datetime.now()
         
         values_to_update: Dict[str, Any] = {
-            "status": status,
+            "status": int(status), # 使用枚举成员的整数值
             "last_modify_date": now # 更新时间戳
         }
         if status == JobStatus.COMPLETED or status == JobStatus.FAILED:
@@ -201,7 +201,7 @@ class JobPersistenceService:
         now = datetime.datetime.now()
         stmt = (
             select(JobPersist)
-            .where(JobPersist.status ==int( JobStatus.PENDING))
+            .where(JobPersist.status ==int(JobStatus.PENDING))
             .where( (JobPersist.scheduled_at == None) | (JobPersist.scheduled_at <= now) )
             .order_by(JobPersist.create_date.asc()) # 使用 create_date
             .limit(limit)

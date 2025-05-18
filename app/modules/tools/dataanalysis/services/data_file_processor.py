@@ -7,6 +7,7 @@ import pandas as pd
 
 from app.core.exceptions import BusinessException
 
+from app.core.job.services import JobPersistenceService
 from app.core.utils.snowflake import generate_id
 from app.modules.tools.dataanalysis.models import (
     UploadFile,
@@ -30,7 +31,7 @@ class DataFileProcessor:
         table_column_repository: TableColumnRepository,
         import_log_repository: ImportLogRepository,
         file_parser_service: FileParserService,
-
+  
         base_storage_path: str = "uploads"
     ):
         """

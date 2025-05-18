@@ -5,6 +5,7 @@ from fastapi import UploadFile
 import datetime
 
 from app.core.exceptions import BusinessException
+from app.core.job.services import JobPersistenceService
 from app.core.storage.base import IStorageService
 
 from app.core.dtos import ApiResponse, PagedResultDto
@@ -88,28 +89,37 @@ class FileUploadService:
         file_content = await file.read()
         await self.storage_service.upload_async(file_content, file_key, content_type)
         
-        # 保存上传记录
-        upload_file = UploadFile(
-            user_id=user_id,
-            original_file_name=file.filename,
-            file_path=file_key,
-            file_size=file.size,
-            file_type=file_extension.lstrip('.'),
-            status=0  # 初始状态
-        )
+        try:
+            # 保存上传记录
+            upload_file = UploadFile(
+                user_id=user_id,
+                original_file_name=file.filename,
+                file_path=file_key,
+                file_size=file.size,
+                file_type=file_extension.lstrip('.'),
+                status=0  # 初始状态
+            )
+            
+            upload_file = await self.upload_file_repository.add_async(upload_file)
+            job_persistence_service = JobPersistenceService(db=self.upload_file_repository.db)
+            await job_persistence_service.create_job(
+                    task_type="dataanalysis.process_file",  # 使用已定义的任务类型标识符
+                    params_id=upload_file.id        # 传递文件 ID 作为主要参数
+                )
+            # 返回上传结果（异步处理将由调度任务完成）
+            return FileUploadResultDto(
+                id=upload_file.id,
+                original_file_name=upload_file.original_file_name,
+                file_type=upload_file.file_type,
+                file_size=upload_file.file_size,
+                status="上传完成，等待解析文件数据...",
+                upload_time=upload_file.create_date
+            )
+        except Exception as e:
+            # 处理异常，删除已上传的文件
+            await self.storage_service.delete_async(file_key)
+            raise BusinessException(f"文件上传失败: {str(e)}")
         
-        upload_file = await self.upload_file_repository.add_async(upload_file)
-        
-        # 返回上传结果（异步处理将由调度任务完成）
-        return FileUploadResultDto(
-            id=upload_file.id,
-            original_file_name=upload_file.original_file_name,
-            file_type=upload_file.file_type,
-            file_size=upload_file.file_size,
-            status="上传完成，等待解析文件数据...",
-            upload_time=upload_file.create_date
-        )
-    
     async def get_file_details_async(self, file_id: int) -> FileDetailItemDto:
         """
         获取文件上传详情

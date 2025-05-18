@@ -192,7 +192,7 @@ def _get_data_file_processor(
         table_column_repository=table_column_repository,
         import_log_repository=import_log_repository,
         file_parser_service=file_parser_service,
-        job_persistence_service=job_persistence_service
+
     )
 
 # 文件上传与管理

@@ -16,7 +16,7 @@ from app.core.config.settings import settings
 import json # 用于解析 params_data
 
 logger = logging.getLogger(__name__)
-logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+logging.getLogger('apscheduler').setLevel(logging.WARNING)
 # 全局调度器实例
 scheduler = AsyncIOScheduler(timezone="Asia/Shanghai") # 使用配置的时区
 
@@ -58,6 +58,7 @@ async def cleanup_old_history_job():
 async def dispatch_pending_jobs_job():
     """定时任务：扫描待处理任务并调用 API，处理 API 调用层面的失败和重试"""
     logger.debug("APScheduler: 开始扫描并调度待处理任务...")
+    print("APScheduler: 开始扫描并调度待处理任务...")
     session = None
     job_service: Optional[JobPersistenceService] = None
     pending_jobs: List[JobPersist] = []
@@ -70,6 +71,7 @@ async def dispatch_pending_jobs_job():
             pending_jobs = await job_service.find_pending_jobs(limit=settings.SCHEDULER_FETCH_LIMIT)
             if not pending_jobs:
                  logger.debug("APScheduler: 没有待处理的任务。")
+                 print("APScheduler: 没有待处理的任务。")
                  return
 
             logger.info(f"APScheduler: 发现 {len(pending_jobs)} 个待处理任务，准备调度...")
