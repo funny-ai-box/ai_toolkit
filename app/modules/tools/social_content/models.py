@@ -1,5 +1,6 @@
 # app/modules/tools/social_content/models.py
 import datetime
+from enum import IntEnum
 from typing import Optional
 from sqlalchemy import BigInteger, DateTime, String, Text, Boolean, Integer, Enum as SQLEnum, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -56,7 +57,7 @@ class PlatformTemplateUser(Base):
     last_modify_date: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, name="LastModifyDate", comment="最后修改时间")
 
 
-class GenerationTaskStatus(int):
+class GenerationTaskStatus(IntEnum):
     """任务状态枚举"""
     PENDING = 0  # 待处理
     PROCESSING = 1  # 处理中

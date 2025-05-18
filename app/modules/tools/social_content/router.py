@@ -262,20 +262,20 @@ async def create_task_stream(
     async def on_chunk_received(chunk: str):
         await sse.send_event("chunk", chunk, event_id)
     
-    # 创建取消令牌
-    cancel_token = asyncio.CancelToken()
+    # 删除这一行:
+    # cancel_token = asyncio.CancelToken()
     
     async def process_task():
         try:
             # 发送开始事件
             await sse.send_event("start", '{"message": "开始生成文案"}', event_id)
             
-            # 调用流式API
+            # 调用流式API - 移除 cancel_token 参数
             result = await task_service.streaming_create_task_async(
                 user_id,
                 request,
-                on_chunk_received,
-                cancel_token
+                on_chunk_received
+                # 删除这个参数: cancel_token
             )
             
             # 序列化结果为JSON字符串
@@ -309,7 +309,6 @@ async def create_task_stream(
         }
     )
 
-
 @router.post("/task/dtl")
 async def get_task_detail(
     request: BaseIdRequestDto,
@@ -326,10 +325,11 @@ async def get_user_tasks(
     request: TaskListRequestDto,
     task_service: TaskService = Depends(_get_task_service),
     user_id: int = Depends(get_current_active_user_id)
-) -> ApiResponse[List[TaskListItemDto]]:
+) -> ApiResponse:
     """获取用户任务列表"""
-    tasks = await task_service.get_user_tasks_async(user_id, request)
-    return ApiResponse[List[TaskListItemDto]].success(tasks)
+    paged_result = await task_service.get_user_tasks_async(user_id, request)
+    # Extract just the items from the paged result
+    return ApiResponse[List[TaskListItemDto]].success(paged_result.items)
 
 
 # 任务执行API - 用于后台处理任务

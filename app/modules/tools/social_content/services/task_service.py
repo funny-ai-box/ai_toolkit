@@ -63,7 +63,7 @@ class TaskService:
                 task_id=task_id,
                 platform_id=request.platform_id,
                 prompt_id=request.prompt_id,
-                prompt_type=request.prompt_type,
+                prompt_type=int(request.prompt_type),
                 template_content=prompt_template_content,
                 system_prompt=prompt_system_content,
                 content_count=request.content_count,
@@ -169,7 +169,7 @@ class TaskService:
                 platform_code=platform_info.code if platform_info else "unknown",
                 prompt_id=tp_entity.prompt_id,
                 prompt_template_name=template_name,
-                prompt_type=tp_entity.prompt_type,
+                prompt_type=int(tp_entity.prompt_type),
                 template_content=tp_entity.template_content, # Content stored with task_platform
                 system_prompt=tp_entity.system_prompt,       # System prompt stored with task_platform
                 status=tp_entity.status,
@@ -366,11 +366,9 @@ class TaskService:
         user_id: int,
         request: CreateTaskRequestDto,
         on_chunk_received: Callable[[str], None]
-        # Removed cancellation_token: Optional[asyncio.CancelToken] = None
+ 
     ) -> TaskDetailResponseDto:
-        # Note: This method combines creation and immediate processing.
-        # Consider if `images` should be passed here if it's truly streaming end-to-end.
-        # The current `create_task_async` handles images but is not itself streaming.
+
         task = await self.create_task_async(user_id, request) # Images are not passed here from original C#
         if not task or not task.id: # Defensive check
             raise BusinessException("任务创建失败，未能获取任务ID")
@@ -380,13 +378,10 @@ class TaskService:
              # Removed cancellation_token
         except asyncio.CancelledError:
             self.logger.info(f"流式创建并处理任务被取消，任务ID：{task.id}")
-            # The task status would have been updated by process_task_async's finally block or cancellation handling
-            # Re-fetch task to get its final state after cancellation attempt.
-            # Fallthrough to get_task_async which will show its current (likely FAILED/CANCELLED) state.
+
         except Exception:
             print(f"流式创建并处理任务过程中发生错误，任务ID：{task.id}", exc_info=True)
-            # Status already updated by process_task_async.
-            # Fallthrough to get_task_async.
+
 
         return await self.get_task_async(user_id, task.id)
 
