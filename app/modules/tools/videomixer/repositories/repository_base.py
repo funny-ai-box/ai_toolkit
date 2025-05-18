@@ -49,6 +49,7 @@ class BaseRepository(Generic[T]):
             
         self.db.add(entity)
         await self.db.flush()
+        await self.db.commit()  # 添加显式提交
         return entity.id
     
     async def add_batch(self, entities: List[T]) -> int:
@@ -79,6 +80,7 @@ class BaseRepository(Generic[T]):
         
         self.db.add_all(entities)
         await self.db.flush()
+        await self.db.commit()  # 添加显式提交
         return len(entities)
     
     async def get_by_id(self, id: int) -> Optional[T]:
@@ -112,6 +114,7 @@ class BaseRepository(Generic[T]):
             
         self.db.add(entity)
         await self.db.flush()
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def delete(self, id: int) -> bool:
@@ -128,4 +131,5 @@ class BaseRepository(Generic[T]):
             delete(self.entity_type).where(self.entity_type.id == id)
         )
         await self.db.flush()
+        await self.db.commit()  # 添加显式提交
         return True

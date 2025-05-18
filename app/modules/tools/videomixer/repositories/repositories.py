@@ -1,6 +1,3 @@
-"""
-视频混剪仓储实现
-"""
 import datetime
 from typing import List, Optional, Tuple, Dict, Any
 
@@ -97,6 +94,7 @@ class MixProjectRepository(BaseRepository[MixProject]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def update_running_async(self, id: int, is_running: int) -> bool:
@@ -122,6 +120,7 @@ class MixProjectRepository(BaseRepository[MixProject]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def update_generate_lock_async(self, id: int, is_generate_lock: int) -> bool:
@@ -147,6 +146,7 @@ class MixProjectRepository(BaseRepository[MixProject]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def get_pending_videos_async(self, batch_size: int = 5) -> List[MixProject]:
@@ -226,6 +226,7 @@ class SourceVideoRepository(BaseRepository[SourceVideo]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def update_metadata_async(
@@ -270,6 +271,7 @@ class SourceVideoRepository(BaseRepository[SourceVideo]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
 
 
@@ -340,6 +342,7 @@ class SceneFrameRepository(BaseRepository[SceneFrame]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def update_selected_status_async(self, id: int, is_selected: int, relevance_score: float) -> bool:
@@ -367,6 +370,7 @@ class SceneFrameRepository(BaseRepository[SceneFrame]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def update_selected_status_batch_async(self, frame_ids: List[int], is_selected: int) -> bool:
@@ -392,6 +396,7 @@ class SceneFrameRepository(BaseRepository[SceneFrame]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def delete_by_project_async(self, project_id: int) -> bool:
@@ -406,6 +411,7 @@ class SceneFrameRepository(BaseRepository[SceneFrame]):
         """
         query = delete(SceneFrame).where(SceneFrame.project_id == project_id)
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
 
 
@@ -467,6 +473,7 @@ class SelectedSceneRepository(BaseRepository[SelectedScene]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def update_scene_video_path_async(self, id: int, scene_video_path: str) -> bool:
@@ -493,6 +500,7 @@ class SelectedSceneRepository(BaseRepository[SelectedScene]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def delete_by_project_async(self, project_id: int) -> bool:
@@ -516,6 +524,7 @@ class SelectedSceneRepository(BaseRepository[SelectedScene]):
         # 删除场景
         query = delete(SelectedScene).where(SelectedScene.project_id == project_id)
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         
         return True
 
@@ -571,6 +580,7 @@ class SelectedSceneNarrationRepository(BaseRepository[SelectedSceneNarration]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def delete_by_scene_id_async(self, scene_id: int) -> bool:
@@ -585,6 +595,7 @@ class SelectedSceneNarrationRepository(BaseRepository[SelectedSceneNarration]):
         """
         query = delete(SelectedSceneNarration).where(SelectedSceneNarration.selected_scene_id == scene_id)
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
 
 
@@ -637,6 +648,7 @@ class FinalVideoRepository(BaseRepository[FinalVideo]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
 
 
@@ -686,6 +698,7 @@ class ProcessLogRepository(BaseRepository[ProcessLog]):
         
         self.db.add(log_obj)
         await self.db.flush()
+        await self.db.commit()  # 添加显式提交
         return log_obj.id
     
     async def get_by_project_id_async(self, project_id: int) -> List[ProcessLog]:
@@ -764,6 +777,7 @@ class ProcessLogRepository(BaseRepository[ProcessLog]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
 
 
@@ -820,6 +834,7 @@ class AIAnalysisRepository(BaseRepository[AIAnalysis]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True
     
     async def update_response_content_async(self, id: int, response_content: str, narration_script: str) -> bool:
@@ -848,4 +863,5 @@ class AIAnalysisRepository(BaseRepository[AIAnalysis]):
         )
         
         await self.db.execute(query)
+        await self.db.commit()  # 添加显式提交
         return True

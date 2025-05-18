@@ -387,14 +387,16 @@ class DataAnalysisService:
                     sql_execution = SqlExecution(
                         conversation_id=conversation.id,
                         sql_statement=query.sql,
-                        execution_status=0  # 执行中
+                        execution_status=0 ,
+                        storage_type=tables[0].storage_type if tables else "mysql",
+                        execution_time=0,
+                        row_count=0,
                     )
                     
                     sql_execution = await self.sql_execution_repository.add_async(sql_execution)
                     
                     try:
-                        # 执行SQL查询
-                        sql_execution.storage_type = tables[0].storage_type  # 使用第一个表的存储类型
+
                         result, row_count, execution_time = await self.sql_execution_repository.execute_sql_query_async(
                             query.sql or "", sql_execution.storage_type or ""
                         )

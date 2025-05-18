@@ -97,7 +97,7 @@ def _get_video_mixer_service(
     
     # 创建提示词服务
     from app.core.redis.service import RedisService
-    redis_service = RedisService(settings)
+    redis_service = RedisService()
     prompt_repository = PromptTemplateRepository(db)
     prompt_service = PromptTemplateService(db, prompt_repository, redis_service)
     

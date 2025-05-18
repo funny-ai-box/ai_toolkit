@@ -1,3 +1,4 @@
+# app/modules/tools/social_content/services/platform_service.py
 from typing import List, Optional, Dict, Any
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -168,7 +169,9 @@ class PlatformService:
                 system_prompt=request.system_prompt
             )
             
-            return await self.platform_repository.add_user_prompt_async(user_prompt)
+            prompt_id = await self.platform_repository.add_user_prompt_async(user_prompt)
+            await self.db.commit()  # 添加显式提交 - 确保repository中的操作被提交
+            return prompt_id
         except BusinessException:
             raise
         except Exception as ex:
@@ -196,7 +199,9 @@ class PlatformService:
             existing_prompt.template_content = request.template_content
             existing_prompt.system_prompt = request.system_prompt
             
-            return await self.platform_repository.update_user_prompt_async(existing_prompt)
+            result = await self.platform_repository.update_user_prompt_async(existing_prompt)
+            await self.db.commit()  # 添加显式提交 - 确保repository中的操作被提交
+            return result
         except BusinessException:
             raise
         except Exception as ex:
@@ -215,7 +220,9 @@ class PlatformService:
             是否成功
         """
         try:
-            return await self.platform_repository.delete_user_prompt_async(prompt_id, user_id)
+            result = await self.platform_repository.delete_user_prompt_async(prompt_id, user_id)
+            await self.db.commit()  # 添加显式提交 - 确保repository中的操作被提交
+            return result
         except Exception as ex:
             print(f"删除用户模板失败，用户ID：{user_id}, 模板ID：{prompt_id}: {str(ex)}")
             raise
