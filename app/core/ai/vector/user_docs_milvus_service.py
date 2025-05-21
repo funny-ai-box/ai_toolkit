@@ -31,67 +31,147 @@ class UserDocsMilvusService(IUserDocsMilvusService):
     async def ensure_collection_exists(self) -> bool:
         """确保用户文档集合存在，并创建必要的索引"""
         try:
-            # 1. 定义集合字段结构
-            field_def = VectorFieldDefine(
-                id_field=self.id_field,
-                vector_field=self.vector_field,
-                vector_dimension=self.dimension,
-                content_field=self.content_field,
-                content_max_length=self.content_max_length,
-                long_fields=[self.user_id_field, self.doc_id_field],
-                int_fields=[self.app_type_field]
-            )
-
-            # 2. 确保集合骨架存在
-            created_or_existed = await self.milvus_service.ensure_collection_exists(
-                collection_name=self.collection_name,
-                field_def=field_def,
-                primary_field_auto_id=True,
-                consistency_level="Bounded"
-            )
+            # 1. 首先检查集合是否存在
+            collection_exists = await self.milvus_service.has_collection_async(self.collection_name)
             
-            if not created_or_existed:
-                logger.error(f"无法创建或确认集合 '{self.collection_name}' 存在")
-                return False
-                
-            # 3. 检查并创建向量索引 - 这是关键修改，Milvus 必须有索引才能加载集合
-            has_collection = await self.milvus_service.has_collection_async(self.collection_name)
-            if has_collection:
-                # 创建向量字段索引
-                vector_index_params = {
-                    "index_type": "HNSW",  # 高效的索引类型，适合大多数场景
-                    "metric_type": "COSINE",  # 使用余弦相似度
-                    "params": {"M": 16, "efConstruction": 256}  # HNSW索引参数
-                }
-                
-                vector_index_created = await self.milvus_service.create_vector_field_index(
-                    self.collection_name,
-                    self.vector_field,
-                    vector_index_params
+            # 2. 如果集合不存在，创建它
+            if not collection_exists:
+                logger.info(f"集合 '{self.collection_name}' 不存在，将创建集合及其索引")
+                # 定义集合字段结构
+                field_def = VectorFieldDefine(
+                    id_field=self.id_field,
+                    vector_field=self.vector_field,
+                    vector_dimension=self.dimension,
+                    content_field=self.content_field,
+                    content_max_length=self.content_max_length,
+                    long_fields=[self.user_id_field, self.doc_id_field],
+                    int_fields=[self.app_type_field]
+                )
+
+                # 创建集合
+                created = await self.milvus_service.ensure_collection_exists(
+                    collection_name=self.collection_name,
+                    field_def=field_def,
+                    primary_field_auto_id=True,
+                    consistency_level="Bounded"
                 )
                 
-                if not vector_index_created:
-                    logger.warning(f"为向量字段 '{self.vector_field}' 创建索引失败")
+                if not created:
+                    logger.error(f"无法创建集合 '{self.collection_name}'")
+                    return False
                 
-                # 创建标量字段索引，加速过滤
-                await self.milvus_service.create_scalar_field_index(
-                    self.collection_name, self.user_id_field
-                )
-                await self.milvus_service.create_scalar_field_index(
-                    self.collection_name, self.doc_id_field
-                )
-                await self.milvus_service.create_scalar_field_index(
-                    self.collection_name, self.app_type_field
-                )
+                # 创建必要的索引
+                await self._create_indexes()
+            else:
+                logger.info(f"集合 '{self.collection_name}' 已存在，将检查和确保必要的索引")
+                # 检查和创建必要的索引，但不触发多个索引在同一字段上的错误
+                await self._check_and_ensure_indexes()
                 
-                # 4. 加载集合到内存
-                await self.milvus_service.load_collection_async(self.collection_name)
-                logger.info(f"集合 '{self.collection_name}' 已创建索引并加载到内存")
+            # 最后，确保集合已加载到内存
+            await self.milvus_service.load_collection_async(self.collection_name)
+            logger.info(f"集合 '{self.collection_name}' 已创建索引并加载到内存")
             
             return True
         except Exception as e:
             logger.error(f"确保集合存在时出错: {e}", exc_info=True)
             return False
+
+    async def _create_indexes(self):
+        """创建所有必要的索引"""
+        # 创建向量字段索引
+        vector_index_params = {
+            "index_type": "HNSW",
+            "metric_type": "COSINE",
+            "params": {"M": 16, "efConstruction": 256}
+        }
+        
+        vector_index_created = await self.milvus_service.create_vector_field_index(
+            self.collection_name,
+            self.vector_field,
+            vector_index_params
+        )
+        
+        if not vector_index_created:
+            logger.warning(f"为向量字段 '{self.vector_field}' 创建索引失败")
+        
+        # 创建标量字段索引，加速过滤
+        fields_to_index = [self.user_id_field, self.doc_id_field, self.app_type_field]
+        for field in fields_to_index:
+            result = await self.milvus_service.create_scalar_field_index(
+                self.collection_name, field
+            )
+            if not result:
+                logger.warning(f"为字段 '{field}' 创建索引失败")
+
+    async def _check_and_ensure_indexes(self):
+        """检查已有索引，并确保必要的索引存在"""
+        # 获取集合对象
+        await self.milvus_service.ensure_connection()
+        collection = await self.milvus_service._get_collection(self.collection_name)
+        
+        # 获取现有的索引信息
+        try:
+            from pymilvus import utility
+            indexes = utility.list_indexes(self.collection_name, using=self.milvus_service.alias)
+            logger.info(f"集合 '{self.collection_name}' 现有索引: {indexes}")
+            
+            # 创建字段到索引的映射
+            indexed_fields = set()
+            for index_info in indexes:
+                if 'field_name' in index_info:
+                    indexed_fields.add(index_info['field_name'])
+            
+            # 只为没有索引的字段创建索引
+            if self.vector_field not in indexed_fields:
+                vector_index_params = {
+                    "index_type": "HNSW",
+                    "metric_type": "COSINE",
+                    "params": {"M": 16, "efConstruction": 256}
+                }
+                await self.milvus_service.create_vector_field_index(
+                    self.collection_name, self.vector_field, vector_index_params
+                )
+            
+            # 检查标量字段
+            fields_to_check = [self.user_id_field, self.doc_id_field, self.app_type_field]
+            for field in fields_to_check:
+                if field not in indexed_fields:
+                    await self.milvus_service.create_scalar_field_index(
+                        self.collection_name, field
+                    )
+        except Exception as e:
+            logger.warning(f"检查或创建索引时出错: {e}")
+            # 使用更简单的方法 - 尝试创建索引并忽略"索引已存在"错误
+            await self._create_indexes_with_error_handling()
+
+    async def _create_indexes_with_error_handling(self):
+        """创建索引并优雅地处理"索引已存在"错误"""
+        # 创建向量索引
+        try:
+            vector_index_params = {
+                "index_type": "HNSW",
+                "metric_type": "COSINE",
+                "params": {"M": 16, "efConstruction": 256}
+            }
+            await self.milvus_service.create_vector_field_index(
+                self.collection_name, self.vector_field, vector_index_params
+            )
+        except Exception as e:
+            if "index already exist" in str(e).lower() or "multiple indexes" in str(e).lower():
+                logger.info(f"向量字段 '{self.vector_field}' 已有索引")
+            else:
+                logger.warning(f"为向量字段创建索引失败: {e}")
+        
+        # 创建标量索引
+        fields = [self.user_id_field, self.doc_id_field, self.app_type_field]
+        for field in fields:
+            try:
+                await self.milvus_service.create_scalar_field_index(self.collection_name, field)
+            except Exception as e:
+                if "index already exist" in str(e).lower() or "multiple indexes" in str(e).lower():
+                    logger.info(f"字段 '{field}' 已有索引")
+                else:
+                    logger.warning(f"为字段 '{field}' 创建索引失败: {e}")
 
     async def insert_vector_async(
         self, user_id: int, app_type: DocumentAppType, document_id: int,

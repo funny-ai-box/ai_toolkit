@@ -228,10 +228,7 @@ class MilvusService(IMilvusService):
             await self.create_scalar_field_index(
                 self.collection_name, self.app_type_field
             )
-            # content 字段如果需要精确匹配或前缀匹配，可以创建 MARISA_TRIE 或 INVERTED 索引
-            # await self.create_scalar_field_index(
-            #     self.collection_name, self.content_field, index_type="INVERTED" # 或 MARISA_TRIE
-            # )
+ 
 
             logger.info(f"集合 '{self.collection_name}' 的索引已确保存在。")
             
@@ -255,16 +252,19 @@ class MilvusService(IMilvusService):
         try:
             collection = await self._get_collection(collection_name)
             
-            # 检查集合是否已加载，如果已加载则先释放
-            try:
-                if utility.load_state(collection_name, using=self.alias) == "Loaded":
-                    logger.info(f"集合 '{collection_name}' 已加载，先释放再创建索引")
-                    collection.release()
-            except Exception as e:
-                logger.warning(f"检查集合加载状态失败: {e}")
-            
             # 使用明确的索引名
             actual_index_name = index_name or f"{field_name}_idx"
+            
+            # 检查索引是否已经存在
+            try:
+                # 获取所有索引
+                indexes = utility.list_indexes(collection_name, using=self.alias)
+                for idx in indexes:
+                    if idx.get('field_name') == field_name or idx.get('index_name') == actual_index_name:
+                        logger.info(f"索引已存在于字段 '{field_name}' 上 (集合: '{collection_name}')，跳过创建")
+                        return True
+            except Exception as e:
+                logger.warning(f"检查索引是否存在失败: {e}")
             
             logger.info(f"正在为集合 '{collection_name}' 的字段 '{field_name}' 创建索引 (类型: {index_type}, 名称: {actual_index_name})...")
             
@@ -277,20 +277,20 @@ class MilvusService(IMilvusService):
             
             logger.info(f"字段 '{field_name}' 的索引创建成功 (集合: '{collection_name}')。")
             
-            # 不要等待索引构建完成，而是返回成功
-            # utility.wait_for_index_building_complete() 可能导致问题
             return True
             
         except MilvusException as e:
-            logger.error(f"为字段 '{field_name}' 创建索引失败 (集合: '{collection_name}'): {e}", exc_info=True)
-            # 如果是已知的索引存在错误，可以视为成功
-            if "index already exist" in str(e).lower():
-                logger.info(f"索引 '{actual_index_name}' 已存在，视为成功")
+            error_msg = str(e).lower()
+            if "index already exist" in error_msg or "multiple indexes" in error_msg:
+                logger.info(f"索引已存在于字段 '{field_name}' 上 (集合: '{collection_name}')，视为成功")
                 return True
-            return False
+            else:
+                logger.error(f"为字段 '{field_name}' 创建索引失败 (集合: '{collection_name}'): {e}", exc_info=True)
+                return False
         except Exception as e:
             logger.error(f"为字段 '{field_name}' 创建索引时发生未知错误: {e}", exc_info=True)
             return False
+
 
     async def create_vector_field_index(
         self,
