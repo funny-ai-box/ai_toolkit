@@ -262,9 +262,7 @@ async def create_task_stream(
     async def on_chunk_received(chunk: str):
         await sse.send_event("chunk", chunk, event_id)
     
-    # 删除这一行:
-    # cancel_token = asyncio.CancelToken()
-    
+
     async def process_task():
         try:
             # 发送开始事件

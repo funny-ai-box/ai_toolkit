@@ -4,10 +4,10 @@ from enum import Enum
 from typing import List, Optional
 
 from app.core.config.settings import settings
-from app.core.ai.vector.base import IUserDocsMilvusService, VectorFieldDefine # 导入协议和 DTO
-from app.core.ai.vector.milvus_service import MilvusService # 导入基础服务
-from app.core.ai.dtos import UserDocsVectorSearchResult # 导入响应 DTO
-from app.core.dtos import DocumentAppType # 导入枚举
+from app.core.ai.vector.base import IUserDocsMilvusService, VectorFieldDefine
+from app.core.ai.vector.milvus_service import MilvusService
+from app.core.ai.dtos import UserDocsVectorSearchResult
+from app.core.dtos import DocumentAppType
 from app.core.exceptions import BusinessException
 
 logger = logging.getLogger(__name__)
@@ -30,34 +30,77 @@ class UserDocsMilvusService(IUserDocsMilvusService):
 
     async def ensure_collection_exists(self) -> bool:
         """确保用户文档集合存在，并创建必要的索引"""
-        # 1. 定义集合字段结构
-        field_def = VectorFieldDefine(
-            id_field=self.id_field,
-            vector_field=self.vector_field,
-            vector_dimension=self.dimension,
-            content_field=self.content_field,
-            content_max_length=self.content_max_length,
-            long_fields=[self.user_id_field, self.doc_id_field], # userId 和 docId 是 long
-            int_fields=[self.app_type_field] # appType 是 int 枚举
-            # varchar_fields, float_fields, double_fields, bool_fields 根据需要添加
-        )
+        try:
+            # 1. 定义集合字段结构
+            field_def = VectorFieldDefine(
+                id_field=self.id_field,
+                vector_field=self.vector_field,
+                vector_dimension=self.dimension,
+                content_field=self.content_field,
+                content_max_length=self.content_max_length,
+                long_fields=[self.user_id_field, self.doc_id_field],
+                int_fields=[self.app_type_field]
+            )
 
-        # 2. 确保集合骨架存在
-        created_or_existed = await self.milvus_service.ensure_collection_exists(
-            collection_name=self.collection_name,
-            field_def=field_def,
-            primary_field_auto_id=True, # 让 Milvus 自动生成主键 ID (推荐)
-            consistency_level="Bounded" # 或者根据需要调整
-        )
-        if not created_or_existed:
-            return False # 如果集合创建失败        
-        return True
+            # 2. 确保集合骨架存在
+            created_or_existed = await self.milvus_service.ensure_collection_exists(
+                collection_name=self.collection_name,
+                field_def=field_def,
+                primary_field_auto_id=True,
+                consistency_level="Bounded"
+            )
+            
+            if not created_or_existed:
+                logger.error(f"无法创建或确认集合 '{self.collection_name}' 存在")
+                return False
+                
+            # 3. 检查并创建向量索引 - 这是关键修改，Milvus 必须有索引才能加载集合
+            has_collection = await self.milvus_service.has_collection_async(self.collection_name)
+            if has_collection:
+                # 创建向量字段索引
+                vector_index_params = {
+                    "index_type": "HNSW",  # 高效的索引类型，适合大多数场景
+                    "metric_type": "COSINE",  # 使用余弦相似度
+                    "params": {"M": 16, "efConstruction": 256}  # HNSW索引参数
+                }
+                
+                vector_index_created = await self.milvus_service.create_vector_field_index(
+                    self.collection_name,
+                    self.vector_field,
+                    vector_index_params
+                )
+                
+                if not vector_index_created:
+                    logger.warning(f"为向量字段 '{self.vector_field}' 创建索引失败")
+                
+                # 创建标量字段索引，加速过滤
+                await self.milvus_service.create_scalar_field_index(
+                    self.collection_name, self.user_id_field
+                )
+                await self.milvus_service.create_scalar_field_index(
+                    self.collection_name, self.doc_id_field
+                )
+                await self.milvus_service.create_scalar_field_index(
+                    self.collection_name, self.app_type_field
+                )
+                
+                # 4. 加载集合到内存
+                await self.milvus_service.load_collection_async(self.collection_name)
+                logger.info(f"集合 '{self.collection_name}' 已创建索引并加载到内存")
+            
+            return True
+        except Exception as e:
+            logger.error(f"确保集合存在时出错: {e}", exc_info=True)
+            return False
 
     async def insert_vector_async(
         self, user_id: int, app_type: DocumentAppType, document_id: int,
         content: str, vector: List[float]
     ) -> int:
         """插入单个向量"""
+        # 确保集合存在并已索引
+        await self.ensure_collection_exists()
+        
         ids, count = await self.insert_vectors_async(
             user_id, app_type, document_id, [content], [vector]
         )
@@ -71,6 +114,9 @@ class UserDocsMilvusService(IUserDocsMilvusService):
         contents: List[str], vectors: List[List[float]]
     ) -> List[int]:
         """批量插入向量"""
+        # 确保集合存在并已索引
+        await self.ensure_collection_exists()
+        
         if not contents or not vectors or len(contents) != len(vectors):
             raise ValueError("内容列表和向量列表不能为空且长度必须一致")
 
@@ -78,11 +124,10 @@ class UserDocsMilvusService(IUserDocsMilvusService):
         data = []
         for i in range(len(contents)):
             row = {
-                # self.id_field: generate_id(), # 如果让 Milvus auto_id=True 则不需要提供
                 self.user_id_field: user_id,
-                self.app_type_field: int(app_type.value) if isinstance(app_type, Enum) else int(app_type), # 存储枚举的整数值
+                self.app_type_field: int(app_type.value) if isinstance(app_type, Enum) else int(app_type),
                 self.doc_id_field: document_id,
-                self.content_field: contents[i][:self.content_max_length], # 截断内容
+                self.content_field: contents[i][:self.content_max_length],
                 self.vector_field: vectors[i]
             }
             data.append(row)
@@ -94,16 +139,16 @@ class UserDocsMilvusService(IUserDocsMilvusService):
 
         if inserted_count != len(data):
              logger.warning(f"尝试插入 {len(data)} 条向量，实际成功 {inserted_count} 条。")
-             # 根据业务需求决定是否抛异常
 
-        # Milvus 返回的 primary_keys 类型可能是 list[int] 或 list[str]
-        return [int(pk) for pk in inserted_ids] # 假设 ID 是整数
-
+        return [int(pk) for pk in inserted_ids]
 
     async def delete_vectors_by_document_id_async(
         self, user_id: int, document_id: int
     ) -> bool:
         """根据用户 ID 和文档 ID 删除相关的所有向量"""
+        # 确保集合存在并已索引
+        await self.ensure_collection_exists()
+        
         # 构建删除表达式
         expr = f"{self.user_id_field} == {user_id} and {self.doc_id_field} == {document_id}"
 
@@ -119,6 +164,11 @@ class UserDocsMilvusService(IUserDocsMilvusService):
         consistency_level: Optional[str] = None
     ) -> List[UserDocsVectorSearchResult]:
         """根据用户、应用类型等搜索相似向量"""
+        # 确保集合存在、有索引且已加载
+        collection_ready = await self.ensure_collection_exists()
+        if not collection_ready:
+            logger.warning(f"集合 '{self.collection_name}' 不可用，无法执行搜索")
+            return []  # 返回空结果而不是抛出异常，让调用方能够优雅降级
 
         # 1. 构建过滤表达式
         filter_parts = [
@@ -131,52 +181,56 @@ class UserDocsMilvusService(IUserDocsMilvusService):
 
         # 2. 定义搜索参数
         search_params = {
-            "metric_type": "COSINE", # 或者从配置读取，需与索引一致
-            "params": {"ef": 128} # ef 搜索参数，需要根据索引类型和数据调整
+            "metric_type": "COSINE",
+            "params": {"ef": 128}  # 搜索参数，需与 efConstruction 一致或更小
         }
 
         # 3. 定义需要返回的字段
         output_fields = [
-            self.id_field, # Milvus 会自动返回 id 和 distance/score
+            self.id_field,
             self.doc_id_field,
             self.content_field
-            # 可以添加其他需要的字段，如 appType
         ]
 
-        # 4. 调用基础服务搜索
-        search_results = await self.milvus_service.search_async(
-            collection_name=self.collection_name,
-            query_vectors=[query_vector], # search_async 接受向量列表
-            vector_field=self.vector_field,
-            search_params=search_params,
-            limit=top_k,
-            expr=expr,
-            output_fields=output_fields,
-            consistency_level=consistency_level
-        )
+        try:
+            # 4. 调用基础服务搜索
+            search_results = await self.milvus_service.search_async(
+                collection_name=self.collection_name,
+                query_vectors=[query_vector],
+                vector_field=self.vector_field,
+                search_params=search_params,
+                limit=top_k,
+                expr=expr,
+                output_fields=output_fields,
+                consistency_level=consistency_level
+            )
 
-        # 5. 处理和过滤结果
-        final_results: List[UserDocsVectorSearchResult] = []
-        if search_results and search_results[0]: # search_results 是 List[List[Dict]]
-            hits = search_results[0] # 获取第一个查询向量的结果列表
-            for hit in hits:
-                score = hit.get("score", 0.0) # 获取计算出的相似度得分
-                # 应用最小得分阈值
-                if score >= min_score:
-                    entity_data = hit.get("entity", {})
-                    result_dto = UserDocsVectorSearchResult(
-                        id=hit.get("id"), # Milvus 返回的主键 ID
-                        documentId=entity_data.get(self.doc_id_field), # DTO 使用 camelCase
-                        content=entity_data.get(self.content_field),
-                        score=round(score, 4) # 保留 4 位小数
-                    )
-                    final_results.append(result_dto)
+            # 5. 处理和过滤结果
+            final_results: List[UserDocsVectorSearchResult] = []
+            if search_results and search_results[0]:
+                hits = search_results[0]
+                for hit in hits:
+                    score = hit.get("score", 0.0)
+                    if score >= min_score:
+                        entity_data = hit.get("entity", {})
+                        result_dto = UserDocsVectorSearchResult(
+                            id=hit.get("id"),
+                            documentId=entity_data.get(self.doc_id_field),
+                            content=entity_data.get(self.content_field),
+                            score=round(score, 4)
+                        )
+                        final_results.append(result_dto)
 
-        # 可以选择按得分排序
-        final_results.sort(key=lambda x: x.score, reverse=True)
+            # 可以选择按得分排序
+            final_results.sort(key=lambda x: x.score, reverse=True)
 
-        logger.info(f"向量搜索完成 (User: {user_id}, App: {app_type}, Doc: {document_id}), "
-                    f"找到 {len(hits) if search_results else 0} 个原始结果, "
-                    f"返回 {len(final_results)} 个满足条件 (score >= {min_score}) 的结果。")
+            logger.info(f"向量搜索完成 (User: {user_id}, App: {app_type}, Doc: {document_id}), "
+                        f"找到 {len(hits) if search_results and search_results[0] else 0} 个原始结果, "
+                        f"返回 {len(final_results)} 个满足条件 (score >= {min_score}) 的结果。")
 
-        return final_results
+            return final_results
+            
+        except Exception as e:
+            logger.error(f"执行向量搜索时出错: {e}", exc_info=True)
+            # 出错时返回空结果，让应用可以继续而不是完全失败
+            return []

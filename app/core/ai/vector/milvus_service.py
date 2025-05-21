@@ -203,21 +203,27 @@ class MilvusService(IMilvusService):
 
             # 4. 确保必要的索引存在 (创建索引前最好释放集合)
             # 为向量字段创建索引 (示例使用 HNSW)
+            vector_index_name = f"{self.vector_field}_vector_idx"
             vector_index_params = {
-                "index_type": "HNSW",
-                "metric_type": "COSINE", # 或 L2, IP
-                "params": {"M": 16, "efConstruction": 256} # efConstruction 建议比 ef 大
-            }
-            await self.create_vector_field_index(
-                self.collection_name, self.vector_field, vector_index_params
-            )
+            "index_type": "HNSW",
+            "metric_type": "COSINE",
+            "params": {"M": 16, "efConstruction": 256}
+        }
+            await self.milvus_service.create_vector_field_index(
+            self.collection_name,
+            self.vector_field,
+            vector_index_params,
+            index_name=vector_index_name  # 明确指定索引名称
+        )
 
             # 为常用的标量字段创建索引以加速过滤
             await self.create_scalar_field_index(
-                self.collection_name, self.user_id_field
+                self.collection_name, self.user_id_field,
+                index_name=f"{self.user_id_field}_scalar_idx"
             )
             await self.create_scalar_field_index(
-                self.collection_name, self.doc_id_field
+                self.collection_name, self.doc_id_field,
+                
             )
             await self.create_scalar_field_index(
                 self.collection_name, self.app_type_field
@@ -240,51 +246,47 @@ class MilvusService(IMilvusService):
 
 
     async def create_scalar_field_index(
-        self,
-        collection_name: str,
-        field_name: str,
-        index_name: Optional[str] = None,
-        index_type: str = "AUTOINDEX"
-    ) -> bool:
-        """为标量或 VARCHAR 字段创建索引"""
+    self,
+    collection_name: str,
+    field_name: str,
+    index_name: Optional[str] = None,
+    index_type: str = "AUTOINDEX"
+) -> bool:
         try:
             collection = await self._get_collection(collection_name)
-            # 检查字段是否存在于 Schema 中
-            field_names = [f.name for f in collection.schema.fields]
-            if field_name not in field_names:
-                 logger.error(f"尝试为不存在的字段 '{field_name}' 创建索引 (集合: '{collection_name}')。")
-                 return False
-
-            # 检查索引是否已存在
-            if collection.has_index(index_name=index_name or f"{field_name}_idx"):
-                 logger.info(f"字段 '{field_name}' 的索引 '{index_name or f'{field_name}_idx'}' 已存在于集合 '{collection_name}'。")
-                 return True
-
-            logger.info(f"正在为集合 '{collection_name}' 的字段 '{field_name}' 创建索引 (类型: {index_type})...")
-            # Milvus 2.3+ 推荐使用 AUTOINDEX 或 MARISA_TRIE (用于 VARCHAR 前缀匹配) 或 INVERTED
-            # index_params = {"index_type": index_type} # 简单类型可能不需要额外参数
-            # 注意：创建索引前通常需要释放集合
-            # await self.release_collection_async(collection_name)
-            # pymilvus 库会自动处理加载/释放吗？文档建议手动管理。
-            # 还是在 ensure_collection_exists 之后统一创建所有索引再加载？ -- 这种方式更好
-
-            # 假设在调用此方法前，集合是未加载状态，或者此方法包含加载/释放逻辑
-            # collection.release() # 释放集合以创建索引 (如果已加载)
+            
+            # 检查集合是否已加载，如果已加载则先释放
+            try:
+                if utility.load_state(collection_name, using=self.alias) == "Loaded":
+                    logger.info(f"集合 '{collection_name}' 已加载，先释放再创建索引")
+                    collection.release()
+            except Exception as e:
+                logger.warning(f"检查集合加载状态失败: {e}")
+            
+            # 使用明确的索引名
+            actual_index_name = index_name or f"{field_name}_idx"
+            
+            logger.info(f"正在为集合 '{collection_name}' 的字段 '{field_name}' 创建索引 (类型: {index_type}, 名称: {actual_index_name})...")
+            
+            # 创建索引
             collection.create_index(
                 field_name=field_name,
-                index_params={"index_type": index_type}, # 标量索引通常类型就够了
-                index_name=index_name # Milvus 会自动生成名称
+                index_params={"index_type": index_type},
+                index_name=actual_index_name
             )
+            
             logger.info(f"字段 '{field_name}' 的索引创建成功 (集合: '{collection_name}')。")
-            # 等待索引构建完成 (重要！)
-            logger.info(f"等待字段 '{field_name}' 的索引构建完成...")
-            utility.wait_for_index_building_complete(collection_name, index_name=index_name or f"{field_name}_idx", using=self.alias)
-            logger.info(f"字段 '{field_name}' 的索引构建完成。")
-            # collection.load() # 创建完索引后重新加载 (如果需要立即搜索)
+            
+            # 不要等待索引构建完成，而是返回成功
+            # utility.wait_for_index_building_complete() 可能导致问题
             return True
+            
         except MilvusException as e:
             logger.error(f"为字段 '{field_name}' 创建索引失败 (集合: '{collection_name}'): {e}", exc_info=True)
-            # raise BusinessException(...) # 根据需要决定是否向上抛出
+            # 如果是已知的索引存在错误，可以视为成功
+            if "index already exist" in str(e).lower():
+                logger.info(f"索引 '{actual_index_name}' 已存在，视为成功")
+                return True
             return False
         except Exception as e:
             logger.error(f"为字段 '{field_name}' 创建索引时发生未知错误: {e}", exc_info=True)
@@ -557,26 +559,35 @@ class MilvusService(IMilvusService):
         """加载集合到内存"""
         try:
             collection = await self._get_collection(collection_name)
-            if collection.has_index(): # 只有创建了索引才能加载
-                 # 检查加载状态
-                 load_state = utility.load_state(collection_name, using=self.alias)
-                 if load_state == "Loaded" or load_state == "Loading":
-                      if utility.loading_progress(collection_name, using=self.alias).get("loading_progress", 0) == 100:
-                           logger.debug(f"集合 '{collection_name}' 已加载。")
-                           return
-                      else:
-                           logger.info(f"集合 '{collection_name}' 正在加载中，等待完成...")
-                           utility.wait_for_loading_complete(collection_name, using=self.alias, timeout=60)
-                           logger.info(f"集合 '{collection_name}' 加载完成。")
-                           return
+            
+            # 获取集合的所有索引
+            indexes = []
+            try:
+                # 获取索引列表而不是使用has_index()
+                indexes = utility.list_indexes(collection_name, using=self.alias)
+            except Exception as e:
+                logger.warning(f"获取集合 '{collection_name}' 的索引列表失败: {e}")
+            
+            if indexes:  # 如果存在任何索引
+                # 检查加载状态
+                load_state = utility.load_state(collection_name, using=self.alias)
+                if load_state == "Loaded" or load_state == "Loading":
+                    if utility.loading_progress(collection_name, using=self.alias).get("loading_progress", 0) == 100:
+                        logger.debug(f"集合 '{collection_name}' 已加载。")
+                        return
+                    else:
+                        logger.info(f"集合 '{collection_name}' 正在加载中，等待完成...")
+                        utility.wait_for_loading_complete(collection_name, using=self.alias, timeout=60)
+                        logger.info(f"集合 '{collection_name}' 加载完成。")
+                        return
 
-                 logger.info(f"正在加载集合 '{collection_name}' 到内存...")
-                 collection.load()
-                 # 等待加载完成
-                 utility.wait_for_loading_complete(collection_name, using=self.alias, timeout=60)
-                 logger.info(f"集合 '{collection_name}' 加载完成。")
+                logger.info(f"正在加载集合 '{collection_name}' 到内存...")
+                collection.load()
+                # 等待加载完成
+                utility.wait_for_loading_complete(collection_name, using=self.alias, timeout=60)
+                logger.info(f"集合 '{collection_name}' 加载完成。")
             else:
-                 logger.warning(f"集合 '{collection_name}' 没有索引，无法加载。")
+                logger.warning(f"集合 '{collection_name}' 没有索引，无法加载。")
         except MilvusException as e:
             logger.error(f"加载集合 '{collection_name}' 失败: {e}", exc_info=True)
             raise BusinessException(f"加载向量集合失败: {e}", code=500) from e
