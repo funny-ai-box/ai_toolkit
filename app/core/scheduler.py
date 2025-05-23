@@ -34,7 +34,7 @@ async def migrate_jobs_to_history_job():
             migrated_count = await job_service.migrate_finished_jobs(older_than=seven_days_ago, batch_size=500)
             logger.info(f"APScheduler: 任务迁移完成，共迁移 {migrated_count} 条记录。")
     except Exception as e:
-        logger.error(f"APScheduler: 迁移任务到历史表时出错: {e}", exc_info=True)
+        logger.error(f"APScheduler: 迁移任务到历史表时出错: {e}")
     finally:
          if session: await session.close() # 确保关闭
 
@@ -50,7 +50,7 @@ async def cleanup_old_history_job():
             deleted_count = await job_service.delete_old_history_jobs(older_than=ninety_days_ago, batch_size=1000)
             logger.info(f"APScheduler: 旧历史任务清理完成，共删除 {deleted_count} 条记录。")
     except Exception as e:
-        logger.error(f"APScheduler: 清理旧历史任务时出错: {e}", exc_info=True)
+        logger.error(f"APScheduler: 清理旧历史任务时出错: {e}")
     finally:
          if session: await session.close()
 
@@ -81,7 +81,7 @@ async def dispatch_pending_jobs_job():
                  if config: job_configs[task_type] = config
                  else: logger.warning(f"APScheduler: 任务类型 '{task_type}' 未找到配置。")
     except Exception as e:
-         logger.error(f"APScheduler: 查询待处理任务或配置时出错: {e}", exc_info=True)
+         logger.error(f"APScheduler: 查询待处理任务或配置时出错: {e}")
          if session: await session.close()
          return
     finally:
@@ -216,7 +216,7 @@ def start_scheduler():
         if not scheduler.running: scheduler.start()
         logger.info("APScheduler 已启动，并添加了任务调度和维护作业。")
     except Exception as e:
-        logger.error(f"启动 APScheduler 或添加作业时出错: {e}", exc_info=True)
+        logger.error(f"启动 APScheduler 或添加作业时出错: {e}")
 
 
 def stop_scheduler():
@@ -227,4 +227,4 @@ def stop_scheduler():
             scheduler.shutdown(wait=True)
             logger.info("APScheduler 已关闭。")
         except Exception as e:
-            logger.error(f"关闭 APScheduler 时出错: {e}", exc_info=True)
+            logger.error(f"关闭 APScheduler 时出错: {e}")

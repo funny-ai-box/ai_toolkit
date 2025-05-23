@@ -38,7 +38,7 @@ class VideoProcessingService:
                 await self.process_single_video_async(project)
         
         except Exception as e:
-            logger.error(f"处理待处理视频项目时发生错误: {str(e)}", exc_info=True)
+            logger.error(f"处理待处理视频项目时发生错误: {str(e)}")
     
     async def process_single_video_async(self, project: MixProject):
         """
@@ -57,13 +57,13 @@ class VideoProcessingService:
             await self.process_single_video_loop_status_async(project.id)
         
         except Exception as e:
-            logger.error(f"处理视频项目 {project.id} 时发生错误: {str(e)}", exc_info=True)
+            logger.error(f"处理视频项目 {project.id} 时发生错误: {str(e)}")
             
             try:
                 # 更新视频项目状态为解锁执行
                 await self.video_mixer_service.update_running_async(project.id, 0)
             except Exception as update_ex:
-                logger.error(f"解锁视频项目 {project.id} 状态时发生错误: {str(update_ex)}", exc_info=True)
+                logger.error(f"解锁视频项目 {project.id} 状态时发生错误: {str(update_ex)}")
     
     async def process_single_video_loop_status_async(self, project_id: int):
         """

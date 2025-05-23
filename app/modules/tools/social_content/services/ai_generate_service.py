@@ -146,7 +146,7 @@ class AIGenerateService:
             self.logger.info(f"为平台生成内容任务被取消，任务ID：{task.id}, 平台ID：{task_platform.platform_id}")
             raise # Re-raise so the caller (e.g., job endpoint) can handle it
         except Exception as ex:
-            print(f"为平台生成内容失败，任务ID：{task.id}, 平台ID：{task_platform.platform_id}: {str(ex)}", exc_info=True)
+            print(f"为平台生成内容失败，任务ID：{task.id}, 平台ID：{task_platform.platform_id}: {str(ex)}")
             raise
 
     async def generate_images_desc_async(self, task_images: List[GenerationTaskImage]) -> None:
@@ -184,7 +184,7 @@ class AIGenerateService:
                 # For now, let it propagate if the whole generate_images_desc_async is cancelled
                 raise
             except Exception as ex:
-                print(f"处理任务图片失败，图片ID：{image.id}: {str(ex)}", exc_info=True)
+                print(f"处理任务图片失败，图片ID：{image.id}: {str(ex)}")
                 await self.task_repository.update_task_image_description_async(image.id, "图片描述生成失败")
 
     async def search_related_contents_async(
@@ -222,7 +222,7 @@ class AIGenerateService:
             self.logger.info(f"相关内容搜索任务被取消，任务ID：{task.id}")
             raise
         except Exception as ex:
-            print(f"搜索相关内容失败，任务ID：{task.id}: {str(ex)}", exc_info=True)
+            print(f"搜索相关内容失败，任务ID：{task.id}: {str(ex)}")
         return related_contents
 
     def _replace_template_variables(

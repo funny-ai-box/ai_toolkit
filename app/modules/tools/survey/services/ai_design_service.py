@@ -127,7 +127,7 @@ class AIDesignService:
                     tabs=[]
                 )
         except Exception as ex:
-            logger.error(f"流式AI设计问卷字段失败: {str(ex)}", exc_info=True)
+            logger.error(f"流式AI设计问卷字段失败: {str(ex)}")
             raise
 
     def parse_ai_response(self, ai_response: str) -> Tuple[str, List[TabDesignDto]]:
@@ -178,7 +178,7 @@ class AIDesignService:
             
             return ai_response, []
         except Exception as ex:
-            logger.error(f"解析AI响应失败: {str(ex)}", exc_info=True)
+            logger.error(f"解析AI响应失败: {str(ex)}")
             return ai_response, []
 
     async def build_smart_chat_messages_async(
@@ -329,7 +329,7 @@ class AIDesignService:
                 return json.dumps(tab_configs, ensure_ascii=False, indent=2)
             return None
         except Exception as ex:
-            logger.error(f"获取当前问卷配置失败: {str(ex)}", exc_info=True)
+            logger.error(f"获取当前问卷配置失败: {str(ex)}")
             return None
 
     async def save_design_history_message(

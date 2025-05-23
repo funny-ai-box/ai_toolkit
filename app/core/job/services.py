@@ -60,7 +60,7 @@ class JobPersistenceService:
             return int(job.id) if job.id is not None else 0 # 添加 ID 非空检查
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"创建任务失败: Type={task_type} - {e}", exc_info=True)
+            logger.error(f"创建任务失败: Type={task_type} - {e}")
             raise
 
     async def acquire_job_lock(self, job_id: int) -> bool:
@@ -94,7 +94,7 @@ class JobPersistenceService:
                 return False
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"获取任务锁时数据库出错: JobId={job_id} - {e}", exc_info=True)
+            logger.error(f"获取任务锁时数据库出错: JobId={job_id} - {e}")
             return False
 
     async def complete_job(self, job_id: int, message: str = "任务成功完成"):
@@ -182,7 +182,7 @@ class JobPersistenceService:
             logger.info(f"任务状态更新成功: JobId={job_id}, NewStatus={status.name}")
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"更新任务状态或记录日志失败: JobId={job_id} - {e}", exc_info=True)
+            logger.error(f"更新任务状态或记录日志失败: JobId={job_id} - {e}")
 
     async def _log_job_event(self, job_id: int, level: JobLogLevel, message: str):
         """记录任务日志到 pb_job_persist_log 表"""
@@ -303,7 +303,7 @@ class JobPersistenceService:
 
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"迁移任务到历史表时出错: {e}", exc_info=True)
+            logger.error(f"迁移任务到历史表时出错: {e}")
             raise # 重新抛出异常，让调度器知道任务失败
 
     async def delete_old_history_jobs(self, older_than: datetime.datetime, batch_size: int = 1000) -> int:
@@ -349,5 +349,5 @@ class JobPersistenceService:
             return deleted_count
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"删除旧历史任务时出错: {e}", exc_info=True)
+            logger.error(f"删除旧历史任务时出错: {e}")
             raise

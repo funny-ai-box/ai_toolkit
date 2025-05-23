@@ -103,7 +103,7 @@ class AIRealTimeService:
         except BusinessException:
             raise
         except Exception as e:
-            print(f"创建OpenAI RealTime会话时发生错误: {str(e)}", exc_info=True)
+            print(f"创建OpenAI RealTime会话时发生错误: {str(e)}")
             raise BusinessException(f"创建OpenAI RealTime会话失败: {str(e)}")
     
     async def _prepare_interview_instructions_async(self, scenario: InterviewScenario, position: JobPosition) -> str:

@@ -161,5 +161,5 @@ class CodeTemplateGeneratorService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"生成代码模板失败: {ex}", exc_info=True)
+            self._logger.error(f"生成代码模板失败: {ex}")
             raise BusinessException(f"生成代码模板时发生内部错误: {str(ex)}")

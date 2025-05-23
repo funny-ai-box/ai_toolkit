@@ -159,7 +159,7 @@ class VideoMixerService:
             return project_id
         
         except Exception as e:
-            logger.error(f"创建混剪项目失败: {str(e)}", exc_info=True)
+            logger.error(f"创建混剪项目失败: {str(e)}")
             raise
     
     async def upload_source_video_async(self, project_id: int, video_file: UploadFile) -> int:
@@ -214,7 +214,7 @@ class VideoMixerService:
             return video_id
         
         except Exception as e:
-            logger.error(f"上传源视频失败: {str(e)}", exc_info=True)
+            logger.error(f"上传源视频失败: {str(e)}")
             
             # 添加处理日志
             await self.process_log_repository.add_async(
@@ -269,7 +269,7 @@ class VideoMixerService:
             return True
         
         except Exception as e:
-            logger.error(f"上传背景音乐失败: {str(e)}", exc_info=True)
+            logger.error(f"上传背景音乐失败: {str(e)}")
             
             # 添加处理日志
             await self.process_log_repository.add_async(
@@ -390,7 +390,7 @@ class VideoMixerService:
             return True
         
         except Exception as e:
-            logger.error(f"分析视频失败: {str(e)}", exc_info=True)
+            logger.error(f"分析视频失败: {str(e)}")
             
             # 更新项目状态和错误信息
             await self.project_repository.update_status_async(project_id, MixProjectStatus.ERROR, str(e))
@@ -546,7 +546,7 @@ class VideoMixerService:
             return True
         
         except Exception as e:
-            logger.error(f"AI分析场景失败: {str(e)}", exc_info=True)
+            logger.error(f"AI分析场景失败: {str(e)}")
             
             # 更新项目状态和错误信息
             await self.project_repository.update_status_async(project_id, MixProjectStatus.ERROR, str(e))
@@ -652,7 +652,7 @@ class VideoMixerService:
             return True
         
         except Exception as e:
-            logger.error(f"生成解说音频失败: {str(e)}", exc_info=True)
+            logger.error(f"生成解说音频失败: {str(e)}")
             
             # 更新项目状态和错误信息
             await self.project_repository.update_status_async(project_id, MixProjectStatus.ERROR, str(e))
@@ -833,7 +833,7 @@ class VideoMixerService:
             return final_video_id
         
         except Exception as e:
-            logger.error(f"生成最终视频失败: {str(e)}", exc_info=True)
+            logger.error(f"生成最终视频失败: {str(e)}")
             
             # 更新项目状态和错误信息
             await self.project_repository.update_status_async(project_id, MixProjectStatus.ERROR, str(e))
@@ -1067,7 +1067,7 @@ class VideoMixerService:
             return output_path
         
         except Exception as e:
-            logger.error(f"提取场景视频失败: {str(e)}", exc_info=True)
+            logger.error(f"提取场景视频失败: {str(e)}")
             raise
     
     def _build_audio_complex_filters(self, scene: SelectedScene) -> str:
@@ -1255,5 +1255,5 @@ class VideoMixerService:
             return output_path
         
         except Exception as e:
-            logger.error(f"合并场景视频失败: {str(e)}", exc_info=True)
+            logger.error(f"合并场景视频失败: {str(e)}")
             raise

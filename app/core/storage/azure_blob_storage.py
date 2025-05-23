@@ -34,7 +34,7 @@ class AzureBlobStorageService(IStorageService):
             # 注意：我们不在 init 中创建 ContainerClient，因为它是异步操作
             # self._container_client: Optional[ContainerClient] = None # 推迟初始化
         except Exception as e:
-            logger.error(f"初始化 Azure Blob Service Client 失败: {e}", exc_info=True)
+            logger.error(f"初始化 Azure Blob Service Client 失败: {e}")
             raise RuntimeError(f"初始化 Azure Blob Service Client 失败: {e}") from e
 
     async def _get_container_client(self) -> ContainerClient:
@@ -52,10 +52,10 @@ class AzureBlobStorageService(IStorageService):
         #         if e.status_code == 409:
         #             logger.info(f"Azure Blob 容器 '{self.container_name}' 已存在。")
         #         else:
-        #             logger.error(f"创建 Azure Blob 容器 '{self.container_name}' 失败: {e}", exc_info=True)
+        #             logger.error(f"创建 Azure Blob 容器 '{self.container_name}' 失败: {e}")
         #             raise BusinessException(f"无法访问存储容器: {e.message}", code=500) from e
         #     except Exception as e:
-        #         logger.error(f"处理 Azure Blob 容器 '{self.container_name}' 时出错: {e}", exc_info=True)
+        #         logger.error(f"处理 Azure Blob 容器 '{self.container_name}' 时出错: {e}")
         #         raise BusinessException(f"无法访问存储容器: {str(e)}", code=500) from e
         #     self._container_client = client
         # return self._container_client
@@ -98,10 +98,10 @@ class AzureBlobStorageService(IStorageService):
             return self.get_url(file_key)
 
         except HttpResponseError as e:
-            logger.error(f"上传文件到 Azure Blob 时发生 HTTP 错误: status={e.status_code}, message={e.message}", exc_info=True)
+            logger.error(f"上传文件到 Azure Blob 时发生 HTTP 错误: status={e.status_code}, message={e.message}")
             raise BusinessException(f"上传文件到云存储失败: {e.message}", code=e.status_code) from e
         except Exception as e:
-            logger.error(f"上传文件到 Azure Blob 时发生未知错误: {e}", exc_info=True)
+            logger.error(f"上传文件到 Azure Blob 时发生未知错误: {e}")
             raise BusinessException(f"上传文件失败: {str(e)}", code=500) from e
 
 
@@ -142,8 +142,8 @@ class AzureBlobStorageService(IStorageService):
             logger.warning(f"尝试从 Azure Blob 删除文件，但文件不存在: {file_key}")
             return True # 文件不存在，视为删除成功
         except HttpResponseError as e:
-            logger.error(f"从 Azure Blob 删除文件时发生 HTTP 错误: status={e.status_code}, message={e.message}", exc_info=True)
+            logger.error(f"从 Azure Blob 删除文件时发生 HTTP 错误: status={e.status_code}, message={e.message}")
             return False
         except Exception as e:
-            logger.error(f"从 Azure Blob 删除文件时发生未知错误: {e}", exc_info=True)
+            logger.error(f"从 Azure Blob 删除文件时发生未知错误: {e}")
             return False

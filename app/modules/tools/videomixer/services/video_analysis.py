@@ -90,7 +90,7 @@ class VideoAnalysisService:
             return metadata
         
         except Exception as e:
-            logger.error(f"分析视频元数据失败: {str(e)}", exc_info=True)
+            logger.error(f"分析视频元数据失败: {str(e)}")
             raise
     
     async def detect_scenes_async(
@@ -180,7 +180,7 @@ class VideoAnalysisService:
             return scene_frames
         
         except Exception as e:
-            logger.error(f"检测视频场景失败: {str(e)}", exc_info=True)
+            logger.error(f"检测视频场景失败: {str(e)}")
             raise
     
     def _create_frame_list_from_files(

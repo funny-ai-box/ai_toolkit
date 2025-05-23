@@ -341,5 +341,5 @@ class DataDesignAIService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"处理数据设计AI对话失败 (task_id: {request.task_id}): {ex}", exc_info=True)
+            self._logger.error(f"处理数据设计AI对话失败 (task_id: {request.task_id}): {ex}")
             raise BusinessException(f"处理AI对话时发生内部错误: {str(ex)}")

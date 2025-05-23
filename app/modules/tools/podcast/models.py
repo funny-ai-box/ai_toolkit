@@ -9,7 +9,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database.base import Base
+from app.core.database.session import Base
 from app.modules.tools.podcast.constants import (
     PodcastTaskStatus, PodcastRoleType, AudioStatusType, 
     PodcastTaskContentType, VoiceGenderType, VoicePlatformType

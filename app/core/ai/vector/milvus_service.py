@@ -67,11 +67,11 @@ class MilvusService(IMilvusService):
             print('*'*20)
             print(type(settings.MILVUS_PORT), settings.MILVUS_PORT)
             print('*'*20)
-            logger.error(f"连接 Milvus ({self.alias}) 失败: {e}", exc_info=True)
+            logger.error(f"连接 Milvus ({self.alias}) 失败: {e}")
             raise BusinessException(f"无法连接到向量数据库: {e}", code=500) from e
         except Exception as e:
             self._connected = False
-            logger.error(f"连接 Milvus ({self.alias}) 时发生未知错误: {e}", exc_info=True)
+            logger.error(f"连接 Milvus ({self.alias}) 时发生未知错误: {e}")
             raise BusinessException(f"连接向量数据库时发生未知错误: {e}", code=500) from e
 
     async def _get_collection(self, collection_name: str) -> Collection:
@@ -235,10 +235,10 @@ class MilvusService(IMilvusService):
             return True # 创建成功
 
         except MilvusException as e:
-            logger.error(f"确保/创建 Milvus 集合 '{collection_name}' 失败: {e}", exc_info=True)
+            logger.error(f"确保/创建 Milvus 集合 '{collection_name}' 失败: {e}")
             raise BusinessException(f"无法确保/创建向量集合 '{collection_name}': {e}", code=500) from e
         except Exception as e:
-            logger.error(f"处理集合 '{collection_name}' 时发生未知错误: {e}", exc_info=True)
+            logger.error(f"处理集合 '{collection_name}' 时发生未知错误: {e}")
             raise BusinessException(f"处理向量集合 '{collection_name}' 时发生未知错误: {e}", code=500) from e
 
 
@@ -285,10 +285,10 @@ class MilvusService(IMilvusService):
                 logger.info(f"索引已存在于字段 '{field_name}' 上 (集合: '{collection_name}')，视为成功")
                 return True
             else:
-                logger.error(f"为字段 '{field_name}' 创建索引失败 (集合: '{collection_name}'): {e}", exc_info=True)
+                logger.error(f"为字段 '{field_name}' 创建索引失败 (集合: '{collection_name}'): {e}")
                 return False
         except Exception as e:
-            logger.error(f"为字段 '{field_name}' 创建索引时发生未知错误: {e}", exc_info=True)
+            logger.error(f"为字段 '{field_name}' 创建索引时发生未知错误: {e}")
             return False
 
 
@@ -336,10 +336,10 @@ class MilvusService(IMilvusService):
             # collection.load() # 重新加载
             return True
         except MilvusException as e:
-            logger.error(f"为向量字段 '{field_name}' 创建索引失败 (集合: '{collection_name}'): {e}", exc_info=True)
+            logger.error(f"为向量字段 '{field_name}' 创建索引失败 (集合: '{collection_name}'): {e}")
             return False
         except Exception as e:
-            logger.error(f"为向量字段 '{field_name}' 创建索引时发生未知错误: {e}", exc_info=True)
+            logger.error(f"为向量字段 '{field_name}' 创建索引时发生未知错误: {e}")
             return False
 
     def _format_data_for_insert(self, data: List[Dict[str, Any]]) -> List[List[Any]]:
@@ -389,10 +389,10 @@ class MilvusService(IMilvusService):
 
             return primary_keys, inserted_count
         except MilvusException as e:
-            logger.error(f"向集合 '{collection_name}' 插入数据失败: {e}", exc_info=True)
+            logger.error(f"向集合 '{collection_name}' 插入数据失败: {e}")
             raise BusinessException(f"向量数据插入失败: {e}", code=500) from e
         except Exception as e:
-            logger.error(f"插入数据到集合 '{collection_name}' 时发生未知错误: {e}", exc_info=True)
+            logger.error(f"插入数据到集合 '{collection_name}' 时发生未知错误: {e}")
             raise BusinessException(f"向量数据插入时发生未知错误: {e}", code=500) from e
 
 
@@ -423,10 +423,10 @@ class MilvusService(IMilvusService):
 
             return delete_count
         except MilvusException as e:
-            logger.error(f"从集合 '{collection_name}' 删除数据失败 (expr='{expr}'): {e}", exc_info=True)
+            logger.error(f"从集合 '{collection_name}' 删除数据失败 (expr='{expr}'): {e}")
             raise BusinessException(f"向量数据删除失败: {e}", code=500) from e
         except Exception as e:
-            logger.error(f"删除集合 '{collection_name}' 数据时发生未知错误: {e}", exc_info=True)
+            logger.error(f"删除集合 '{collection_name}' 数据时发生未知错误: {e}")
             raise BusinessException(f"向量数据删除时发生未知错误: {e}", code=500) from e
 
     async def search_async(
@@ -515,7 +515,7 @@ class MilvusService(IMilvusService):
             return formatted_results
 
         except MilvusException as e:
-            logger.error(f"在集合 '{collection_name}' 中搜索失败: {e}", exc_info=True)
+            logger.error(f"在集合 '{collection_name}' 中搜索失败: {e}")
             # 特殊处理: "collection not loaded"
             if "collection not loaded" in str(e):
                  logger.warning(f"搜索失败因为集合 '{collection_name}' 未加载，尝试加载...")
@@ -526,11 +526,11 @@ class MilvusService(IMilvusService):
                      # return await self.search_async(...) # 简单起见，抛出异常让调用者处理
                      raise BusinessException(f"向量集合 '{collection_name}' 未加载，请稍后重试。", code=503) from e
                  except Exception as load_e:
-                     logger.error(f"加载集合 '{collection_name}' 失败: {load_e}", exc_info=True)
+                     logger.error(f"加载集合 '{collection_name}' 失败: {load_e}")
                      raise BusinessException(f"向量搜索失败 (加载集合时出错): {load_e}", code=500) from load_e
             raise BusinessException(f"向量搜索失败: {e}", code=500) from e
         except Exception as e:
-            logger.error(f"搜索集合 '{collection_name}' 时发生未知错误: {e}", exc_info=True)
+            logger.error(f"搜索集合 '{collection_name}' 时发生未知错误: {e}")
             raise BusinessException(f"向量搜索时发生未知错误: {e}", code=500) from e
 
 
@@ -589,7 +589,7 @@ class MilvusService(IMilvusService):
             else:
                 logger.warning(f"集合 '{collection_name}' 没有索引，无法加载。")
         except MilvusException as e:
-            logger.error(f"加载集合 '{collection_name}' 失败: {e}", exc_info=True)
+            logger.error(f"加载集合 '{collection_name}' 失败: {e}")
             raise BusinessException(f"加载向量集合失败: {e}", code=500) from e
 
     async def release_collection_async(self, collection_name: str):
@@ -600,10 +600,10 @@ class MilvusService(IMilvusService):
             collection.release()
             logger.info(f"集合 '{collection_name}' 已释放。")
         except MilvusException as e:
-            logger.error(f"释放集合 '{collection_name}' 失败: {e}", exc_info=True)
+            logger.error(f"释放集合 '{collection_name}' 失败: {e}")
             # 释放失败通常不是关键错误，只记录日志
         except Exception as e:
-             logger.error(f"释放集合 '{collection_name}' 时发生未知错误: {e}", exc_info=True)
+             logger.error(f"释放集合 '{collection_name}' 时发生未知错误: {e}")
 
 
     async def has_collection_async(self, collection_name: str) -> bool:
@@ -623,5 +623,5 @@ class MilvusService(IMilvusService):
             utility.drop_collection(collection_name, using=self.alias, timeout=30)
             logger.info(f"集合 '{collection_name}' 已删除。")
         except MilvusException as e:
-            logger.error(f"删除集合 '{collection_name}' 失败: {e}", exc_info=True)
+            logger.error(f"删除集合 '{collection_name}' 失败: {e}")
             raise BusinessException(f"删除向量集合失败: {e}", code=500) from e

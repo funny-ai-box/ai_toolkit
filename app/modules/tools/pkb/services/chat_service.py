@@ -96,7 +96,7 @@ class ChatService:
             await self.chat_session_repository.add_async(session)
             return session.id
         except Exception as ex:
-            logger.error(f"创建聊天会话失败: {ex}", exc_info=True)
+            logger.error(f"创建聊天会话失败: {ex}")
             raise
 
     async def update_session_async(
@@ -126,7 +126,7 @@ class ChatService:
 
             return await self.chat_session_repository.update_async(session)
         except Exception as ex:
-            logger.error(f"更新聊天会话失败: {ex}", exc_info=True)
+            logger.error(f"更新聊天会话失败: {ex}")
             raise
 
     async def delete_session_async(self, session_id: int) -> bool:
@@ -146,7 +146,7 @@ class ChatService:
             # 删除会话
             return await self.chat_session_repository.delete_async(session_id)
         except Exception as ex:
-            logger.error(f"删除聊天会话失败: {ex}", exc_info=True)
+            logger.error(f"删除聊天会话失败: {ex}")
             raise
 
     async def share_session_async(self, session_id: int, is_shared: bool) -> str:
@@ -176,7 +176,7 @@ class ChatService:
         except Exception as ex:
             if isinstance(ex, BusinessException):
                 raise
-            logger.error(f"分享聊天会话失败: {ex}", exc_info=True)
+            logger.error(f"分享聊天会话失败: {ex}")
             raise
 
     async def get_match_documents(
@@ -293,7 +293,7 @@ class ChatService:
         except Exception as ex:
             if isinstance(ex, BusinessException):
                 raise
-            logger.error(f"聊天失败: {ex}", exc_info=True)
+            logger.error(f"聊天失败: {ex}")
             raise
 
     async def streaming_chat_async(
@@ -383,7 +383,7 @@ class ChatService:
         except Exception as ex:
             if isinstance(ex, BusinessException):
                 raise
-            logger.error(f"流式聊天失败: {ex}", exc_info=True)
+            logger.error(f"流式聊天失败: {ex}")
             raise
             
     async def _update_session_name_from_first_message_async(self, session_id: int, message: str) -> bool:
@@ -424,7 +424,7 @@ class ChatService:
 
             return False
         except Exception as ex:
-            logger.error(f"更新会话名称失败: {ex}", exc_info=True)
+            logger.error(f"更新会话名称失败: {ex}")
             return False
 
     def _get_context_from_search_results(self, search_results: List[UserDocsVectorSearchResult]) -> str:
@@ -578,7 +578,7 @@ class ChatService:
             history = await self.chat_history_repository.get_by_session_id_async(session_id, limit)
             return sorted(history, key=lambda h: h.create_date)
         except Exception as ex:
-            logger.error(f"获取聊天历史失败: {ex}", exc_info=True)
+            logger.error(f"获取聊天历史失败: {ex}")
             raise
 
     async def get_session_by_share_code_async(self, share_code: str) -> Optional[ChatSession]:
@@ -594,5 +594,5 @@ class ChatService:
         try:
             return await self.chat_session_repository.get_by_share_code_async(share_code)
         except Exception as ex:
-            logger.error(f"通过分享码获取会话失败: {ex}", exc_info=True)
+            logger.error(f"通过分享码获取会话失败: {ex}")
             raise

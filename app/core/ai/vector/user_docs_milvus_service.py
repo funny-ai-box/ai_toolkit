@@ -73,7 +73,7 @@ class UserDocsMilvusService(IUserDocsMilvusService):
             
             return True
         except Exception as e:
-            logger.error(f"确保集合存在时出错: {e}", exc_info=True)
+            logger.error(f"确保集合存在时出错: {e}")
             return False
 
     async def _create_indexes(self):
@@ -311,6 +311,6 @@ class UserDocsMilvusService(IUserDocsMilvusService):
             return final_results
             
         except Exception as e:
-            logger.error(f"执行向量搜索时出错: {e}", exc_info=True)
+            logger.error(f"执行向量搜索时出错: {e}")
             # 出错时返回空结果，让应用可以继续而不是完全失败
             return []

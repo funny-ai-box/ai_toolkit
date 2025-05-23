@@ -101,8 +101,8 @@ class InterviewScenarioContent(Base):
     scenario_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("ism_interview_scenario.Id"), nullable=False, name="ScenarioId", comment="场景ID"
     )
-    content_type: Mapped[InterviewContentType] = mapped_column(
-        SQLAlchemyEnum(InterviewContentType), nullable=False, name="ContentType", comment="内容项类型"
+    content_type: Mapped[int] = mapped_column(
+        Integer, nullable=False, name="ContentType", comment="内容项类型"
     )
     source_document_id: Mapped[int] = mapped_column(
         BigInteger, nullable=True, name="SourceDocumentId", comment="源文档ID（如果是上传文档或URL）"
@@ -165,10 +165,10 @@ class InterviewSession(Base):
     openai_session_id: Mapped[str] = mapped_column(
         String(100), nullable=True, name="OpenAISessionId", comment="OpenAI会话ID"
     )
-    status: Mapped[InterviewSessionStatus] = mapped_column(
-        SQLAlchemyEnum(InterviewSessionStatus),
+    status: Mapped[int] = mapped_column(
+        Integer,
         nullable=False,
-        default=InterviewSessionStatus.NOT_STARTED,
+        default=InterviewSessionStatus.NOT_STARTED.value,
         name="Status",
         comment="会话状态"
     )

@@ -97,7 +97,7 @@ class AIEvaluateAnswerService:
             
         except Exception as e:
             error_msg = f"评估答案时发生错误: {str(e)}"
-            print(error_msg, exc_info=True)
+            print(error_msg)
             return False, 0, error_msg
     
     async def generate_overall_evaluation(self, interactions: List[InterviewInteraction], position: JobPosition) -> str:
@@ -147,5 +147,5 @@ class AIEvaluateAnswerService:
             
         except Exception as e:
             error_msg = f"生成总体评估时发生错误: {str(e)}"
-            print(error_msg, exc_info=True)
+            print(error_msg)
             return "无法生成总体评估，请稍后再试。"

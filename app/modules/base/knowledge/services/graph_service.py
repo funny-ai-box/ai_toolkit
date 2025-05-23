@@ -90,7 +90,7 @@ class KnowledgeGraphService:
                      summary = "[AI结果格式错误]"
 
             except Exception as parse_ex:
-                print(f"解析 AI 返回的知识图谱 JSON 失败: {parse_ex}. Raw result: {ai_result_text[:200]}...", exc_info=True)
+                print(f"解析 AI 返回的知识图谱 JSON 失败: {parse_ex}. Raw result: {ai_result_text[:200]}...")
                 summary = "[AI结果解析失败]"
 
             # 将 keywords 和 mindMap 序列化回 JSON 字符串用于存储
@@ -104,5 +104,5 @@ class KnowledgeGraphService:
              print(f"生成知识图谱时发生业务异常: {be.message}")
              raise
         except Exception as ex:
-            print(f"生成知识图谱时发生未知错误: {ex}", exc_info=True)
+            print(f"生成知识图谱时发生未知错误: {ex}")
             raise BusinessException("生成知识图谱时发生内部错误") from ex

@@ -85,7 +85,7 @@ def get_chat_ai_service(
             # OpenAIService 的 __init__ 会处理客户端创建和异常
             return OpenAIService(http_client=shared_http_client)
         except Exception as e:
-             logger.error(f"创建 OpenAI 服务实例时出错: {e}", exc_info=True)
+             logger.error(f"创建 OpenAI 服务实例时出错: {e}")
              raise RuntimeError(f"创建 OpenAI 服务实例失败: {e}") from e
 
     # --- 未来其他提供者的实现 ---

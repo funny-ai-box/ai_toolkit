@@ -139,7 +139,7 @@ class InterviewScenarioService:
         except ValidationException:
             raise
         except Exception as e:
-            print(f"创建面试场景时发生错误: {str(e)}", exc_info=True)
+            print(f"创建面试场景时发生错误: {str(e)}")
             raise BusinessException("创建面试场景失败")
     
     async def add_scenario_content_async(
@@ -183,7 +183,7 @@ class InterviewScenarioService:
         except NotFoundException:
             raise
         except Exception as e:
-            print(f"创建内容失败: {str(e)}", exc_info=True)
+            print(f"创建内容失败: {str(e)}")
             raise BusinessException("创建内容失败")
     
     async def delete_scenario_content_async(self, user_id: int, content_id: int) -> bool:
@@ -210,7 +210,7 @@ class InterviewScenarioService:
         except NotFoundException:
             raise
         except Exception as e:
-            print(f"删除内容失败，ID: {content_id}", exc_info=True)
+            print(f"删除内容失败，ID: {content_id}")
             raise BusinessException(f"删除内容失败: {str(e)}")
     
     async def get_scenario_content_detail_async(self, user_id: int, content_id: int) -> InterviewScenarioContentItemDto:
@@ -262,7 +262,7 @@ class InterviewScenarioService:
         except NotFoundException:
             raise
         except Exception as e:
-            print(f"获取内容的详情失败，ID: {content_id}", exc_info=True)
+            print(f"获取内容的详情失败，ID: {content_id}")
             raise BusinessException("获取内容的详情失败")
     
     async def get_scenario_async(self, user_id: int, scenario_id: int) -> ScenarioDetailDto:
@@ -344,7 +344,7 @@ class InterviewScenarioService:
         except NotFoundException:
             raise
         except Exception as e:
-            print(f"获取面试场景详情时发生错误: {str(e)}", exc_info=True)
+            print(f"获取面试场景详情时发生错误: {str(e)}")
             raise BusinessException("获取面试场景详情失败")
     
     async def get_user_scenarios_async(self, user_id: int, request: ScenarioListRequestDto) -> PagedResultDto[ScenarioListItemDto]:
@@ -411,7 +411,7 @@ class InterviewScenarioService:
                 total_pages=(total_count + request.page_size - 1) // request.page_size
             )
         except Exception as e:
-            print(f"获取面试场景列表时发生错误: {str(e)}", exc_info=True)
+            print(f"获取面试场景列表时发生错误: {str(e)}")
             raise BusinessException("获取面试场景列表失败")
     
     async def delete_scenario_async(self, user_id: int, scenario_id: int) -> bool:
@@ -447,7 +447,7 @@ class InterviewScenarioService:
         except NotFoundException:
             raise
         except Exception as e:
-            print(f"删除面试场景时发生错误: {str(e)}", exc_info=True)
+            print(f"删除面试场景时发生错误: {str(e)}")
             raise BusinessException("删除面试场景失败")
     
     async def start_analysis_question_async(self, user_id: int, scenario_id: int) -> bool:
@@ -490,7 +490,8 @@ class InterviewScenarioService:
         except BusinessException:
             raise
         except Exception as e:
-            print(f"面试问题生成失败，ID: {scenario_id}", exc_info=True)
+            print(f"开始分析问题和生成面试问题时发生错误: {str(e)}")
+            print(f"面试问题生成失败，ID: {scenario_id}")
             raise BusinessException("面试问题生成失败")
     
     async def process_generate_questions_async(self, scenario_id: int) -> None:
@@ -531,5 +532,5 @@ class InterviewScenarioService:
             await self.scenario_repository.update_status_async(scenario.id, InterviewScenarioStatus.READY)
         except Exception as e:
             err = f"生成面试问题时发生错误: {str(e)}"
-            print(err, exc_info=True)
+            print(err)
             await self.scenario_repository.update_status_async(scenario.id, InterviewScenarioStatus.FAILED, err)

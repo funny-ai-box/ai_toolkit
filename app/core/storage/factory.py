@@ -68,10 +68,10 @@ def get_storage_service(provider_type_str: Optional[str] = None) -> Optional[ISt
             raise ValueError(f"内部错误：无法处理的存储提供者类型 {provider_type.value}")
     except ImportError as e:
          # 捕获可能的导入错误
-         logger.error(f"导入存储服务实现时出错 ({provider_type.value}): {e}", exc_info=True)
+         logger.error(f"导入存储服务实现时出错 ({provider_type.value}): {e}")
          raise RuntimeError(f"无法导入存储服务 {provider_type.value}: {e}") from e
     except Exception as e:
-         logger.error(f"创建存储服务 '{provider_type.value}' 实例时失败: {e}", exc_info=True)
+         logger.error(f"创建存储服务 '{provider_type.value}' 实例时失败: {e}")
          raise RuntimeError(f"创建存储服务 '{provider_type.value}' 失败: {e}") from e
 
 

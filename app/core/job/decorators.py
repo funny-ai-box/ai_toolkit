@@ -95,7 +95,7 @@ def job_endpoint(default_can_retry: bool = True):
             except Exception as e:
                 # 4. 失败，标记失败
                 error_message = f"执行任务 {job_id} 时出错: {str(e)}"
-                logger.error(f"同步任务失败: JobId={job_id} - {error_message}", exc_info=True)
+                logger.error(f"同步任务失败: JobId={job_id} - {error_message}")
                 await job_service.fail_job(job_id, error_message, can_retry=default_can_retry)
                 return ApiResponse.fail(message=error_message, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

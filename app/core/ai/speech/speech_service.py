@@ -91,6 +91,6 @@ class DummySpeechService:
             return True, datetime.timedelta(seconds=simulated_duration)
         
         except Exception as e:
-            logger.error(f"模拟合成语音异常: {str(e)}", exc_info=True)
+            logger.error(f"模拟合成语音异常: {str(e)}")
             return False, datetime.timedelta()
 

@@ -362,7 +362,7 @@ async def ai_design_streaming(
         except Exception as ex:
             # 发送错误事件
             error_message = str(ex)
-            logger.error(f"AI设计问卷失败: {error_message}", exc_info=True)
+            logger.error(f"AI设计问卷失败: {error_message}")
             yield f"id: {event_id}\nevent: error\ndata: {error_message}\n\n"
         finally:
             # 发送结束事件

@@ -42,7 +42,7 @@ class OpenAIService(IChatAIService):
             self.dimension = settings.OPENAI_DIMENSION
             logger.info(f"OpenAI 服务已初始化。聊天模型: {self.chat_model}, 嵌入模型: {self.embedding_model}")
         except Exception as e:
-            logger.error(f"初始化 OpenAI 客户端失败: {e}", exc_info=True)
+            logger.error(f"初始化 OpenAI 客户端失败: {e}")
             raise RuntimeError(f"初始化 OpenAI 客户端失败: {e}") from e
 
     def _convert_input_to_openai_message(self, message: InputMessage) -> Dict[str, Any]:
@@ -104,10 +104,10 @@ class OpenAIService(IChatAIService):
                  logger.error("OpenAI embedding API 返回了空数据。")
                  raise BusinessException("获取文本嵌入失败 (API 返回空)")
         except OpenAIError as e:
-            logger.error(f"OpenAI API 嵌入请求失败: {e}", exc_info=True)
+            logger.error(f"OpenAI API 嵌入请求失败: {e}")
             raise BusinessException(f"获取文本嵌入失败: {e.type} - {e.message}") from e
         except Exception as e:
-            logger.error(f"获取文本嵌入时发生未知错误: {e}", exc_info=True)
+            logger.error(f"获取文本嵌入时发生未知错误: {e}")
             raise BusinessException(f"获取文本嵌入时发生未知错误: {str(e)}") from e
 
     async def get_embeddings_async(self, texts: List[str]) -> List[List[float]]:
@@ -127,10 +127,10 @@ class OpenAIService(IChatAIService):
             # 确保是 list[float]
             return [list(emb) for emb in embeddings]
         except OpenAIError as e:
-            logger.error(f"OpenAI API 批量嵌入请求失败: {e}", exc_info=True)
+            logger.error(f"OpenAI API 批量嵌入请求失败: {e}")
             raise BusinessException(f"批量获取文本嵌入失败: {e.type} - {e.message}") from e
         except Exception as e:
-            logger.error(f"批量获取文本嵌入时发生未知错误: {e}", exc_info=True)
+            logger.error(f"批量获取文本嵌入时发生未知错误: {e}")
             raise BusinessException(f"批量获取文本嵌入时发生未知错误: {str(e)}") from e
 
     async def upload_file_async(self, file_path: str) -> ChatAIUploadFileDto:
@@ -147,7 +147,7 @@ class OpenAIService(IChatAIService):
         #         uri=openai_file.id # 使用 OpenAI 返回的文件 ID
         #     )
         # except Exception as e:
-        #     logger.error(f"上传文件到 OpenAI 失败: {e}", exc_info=True)
+        #     logger.error(f"上传文件到 OpenAI 失败: {e}")
         #     raise BusinessException(f"上传文件失败: {str(e)}") from e
 
     async def chat_completion_async(self, messages: List[InputMessage]) -> str:
@@ -173,13 +173,13 @@ class OpenAIService(IChatAIService):
                 return "[模型未返回有效内容]" # 或者返回空字符串或抛出异常
 
         except OpenAIError as e:
-            logger.error(f"OpenAI API 聊天补全请求失败: {e}", exc_info=True)
+            logger.error(f"OpenAI API 聊天补全请求失败: {e}")
             # 可以根据 e.type 或 e.code 区分不同错误类型
             if "context_length_exceeded" in str(e):
                  raise BusinessException("输入内容过长，请减少输入或缩短对话历史。", code=400) from e
             raise BusinessException(f"AI 聊天服务出错: {e.type} - {e.message}") from e
         except Exception as e:
-            logger.error(f"聊天补全时发生未知错误: {e}", exc_info=True)
+            logger.error(f"聊天补全时发生未知错误: {e}")
             raise BusinessException(f"AI 聊天服务发生未知错误: {str(e)}") from e
 
     async def streaming_chat_completion_async(
@@ -207,12 +207,12 @@ class OpenAIService(IChatAIService):
                      yield content_piece # 产生文本块
 
         except OpenAIError as e:
-            logger.error(f"OpenAI API 流式聊天补全请求失败: {e}", exc_info=True)
+            logger.error(f"OpenAI API 流式聊天补全请求失败: {e}")
             # 在流式接口中，通常不直接抛出异常中断，而是产生一个错误消息
             yield f"[AI Error: {e.type} - {e.message}]"
             # 或者根据需要抛出异常，让上层处理
             # raise BusinessException(f"AI 聊天服务出错: {e.type} - {e.message}") from e
         except Exception as e:
-            logger.error(f"流式聊天补全时发生未知错误: {e}", exc_info=True)
+            logger.error(f"流式聊天补全时发生未知错误: {e}")
             yield f"[Unknown AI Error: {str(e)}]"
             # raise BusinessException(f"AI 聊天服务发生未知错误: {str(e)}") from e

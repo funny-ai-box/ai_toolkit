@@ -68,7 +68,7 @@ class AudioService:
             return True, audio_path, audio_duration
         
         except Exception as e:
-            logger.error(f"文本转语音失败: {str(e)}", exc_info=True)
+            logger.error(f"文本转语音失败: {str(e)}")
             return False, "", datetime.timedelta()
 
 
@@ -116,7 +116,7 @@ class AudioHelper:
             return True
         
         except Exception as e:
-            logger.error(f"音频转换失败: {str(e)}", exc_info=True)
+            logger.error(f"音频转换失败: {str(e)}")
             return False
     
     @staticmethod
@@ -160,7 +160,7 @@ class AudioHelper:
             return True
         
         except Exception as e:
-            logger.error(f"音量调整失败: {str(e)}", exc_info=True)
+            logger.error(f"音量调整失败: {str(e)}")
             return False
     
     @staticmethod
@@ -230,7 +230,7 @@ class AudioHelper:
             return True
         
         except Exception as e:
-            logger.error(f"创建循环版本失败: {str(e)}", exc_info=True)
+            logger.error(f"创建循环版本失败: {str(e)}")
             return False
     
     @staticmethod
@@ -297,5 +297,5 @@ class AudioHelper:
             return True
         
         except Exception as e:
-            logger.error(f"应用淡入淡出效果失败: {str(e)}", exc_info=True)
+            logger.error(f"应用淡入淡出效果失败: {str(e)}")
             return False

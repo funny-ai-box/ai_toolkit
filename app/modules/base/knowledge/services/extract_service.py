@@ -86,13 +86,13 @@ class DocumentExtractService(IDocumentExtractService):
             response.raise_for_status() # 如果状态码不是 2xx，则抛出异常
             return await response.aread() # 读取响应体为 bytes
         except httpx.RequestError as e:
-            logger.error(f"下载文件时请求错误: {e.request.url!r} - {e}", exc_info=True)
+            logger.error(f"下载文件时请求错误: {e.request.url!r} - {e}")
             raise BusinessException(f"无法下载文件 (请求错误): {url}", code=500) from e
         except httpx.HTTPStatusError as e:
-            logger.error(f"下载文件时 HTTP 状态错误: {e.request.url!r} - Status {e.response.status_code}", exc_info=True)
+            logger.error(f"下载文件时 HTTP 状态错误: {e.request.url!r} - Status {e.response.status_code}")
             raise BusinessException(f"无法下载文件 (HTTP {e.response.status_code}): {url}", code=500) from e
         except Exception as e:
-            logger.error(f"下载文件时发生未知错误: {url} - {e}", exc_info=True)
+            logger.error(f"下载文件时发生未知错误: {url} - {e}")
             raise BusinessException(f"下载文件时出错: {url}", code=500) from e
 
     async def extract_file_content_async(
@@ -128,7 +128,7 @@ class DocumentExtractService(IDocumentExtractService):
                          with open(local_path, "rb") as f:
                               file_bytes = f.read()
                      except OSError as e:
-                          logger.error(f"读取本地文件失败: {local_path} - {e}", exc_info=True)
+                          logger.error(f"读取本地文件失败: {local_path} - {e}")
                           raise BusinessException(f"无法读取本地文件: {local_path}", code=500) from e
                  else:
                      logger.warning(f"本地文件 URL 对应的路径不存在: {local_path}, 将尝试通过 HTTP 下载。")
@@ -198,7 +198,7 @@ class DocumentExtractService(IDocumentExtractService):
              logger.error(f"提取文件内容时发生业务异常: {e.message}")
              raise # 直接抛出 BusinessException
         except Exception as e:
-            logger.error(f"提取文件内容时发生未知错误: URL='{document_url}', Filename='{original_filename}' - {e}", exc_info=True)
+            logger.error(f"提取文件内容时发生未知错误: URL='{document_url}', Filename='{original_filename}' - {e}")
             raise BusinessException(f"提取文件内容失败: {str(e)}", code=500) from e
 
     async def extract_web_content_async(self, url: str) -> str:
@@ -213,13 +213,13 @@ class DocumentExtractService(IDocumentExtractService):
             logger.info(f"网页内容提取完成: URL='{url}', Extracted Length={len(content)}")
             return content.strip() if content else ""
         except httpx.RequestError as e:
-            logger.error(f"提取网页时请求错误: {e.request.url!r} - {e}", exc_info=True)
+            logger.error(f"提取网页时请求错误: {e.request.url!r} - {e}")
             raise BusinessException(f"无法访问网页 (请求错误): {url}", code=400) from e
         except httpx.HTTPStatusError as e:
-            logger.error(f"提取网页时 HTTP 状态错误: {e.request.url!r} - Status {e.response.status_code}", exc_info=True)
+            logger.error(f"提取网页时 HTTP 状态错误: {e.request.url!r} - Status {e.response.status_code}")
             raise BusinessException(f"无法访问网页 (HTTP {e.response.status_code}): {url}", code=400) from e
         except Exception as e:
-            logger.error(f"提取网页内容时发生未知错误: URL='{url}' - {e}", exc_info=True)
+            logger.error(f"提取网页内容时发生未知错误: URL='{url}' - {e}")
             raise BusinessException(f"提取网页内容失败: {str(e)}", code=500) from e
 
     def _extract_html_content(self, html_bytes: bytes, detected_encoding: Optional[str] = None) -> str:
@@ -269,7 +269,7 @@ class DocumentExtractService(IDocumentExtractService):
             text = re.sub(r'\s+', ' ', text).strip()
             return text
         except Exception as e:
-             logger.error(f"使用 BeautifulSoup 解析 HTML 时出错: {e}", exc_info=True)
+             logger.error(f"使用 BeautifulSoup 解析 HTML 时出错: {e}")
              # Fallback 到简单正则
              html_string = html_bytes.decode('utf-8', errors='ignore')
              text = re.sub(r'<script.*?>.*?</script>', '', html_string, flags=re.IGNORECASE | re.DOTALL)
@@ -294,7 +294,7 @@ class DocumentExtractService(IDocumentExtractService):
             logger.debug("DOCX 文本提取完成。")
             return '\n'.join(full_text)
         except Exception as e:
-            logger.error(f"提取 DOCX 内容失败: {e}", exc_info=True)
+            logger.error(f"提取 DOCX 内容失败: {e}")
             raise BusinessException(f"解析 DOCX 文件失败: {str(e)}") from e
 
     # PDF Miner 提取 (如果使用 pdfminer.six 库)
@@ -319,5 +319,5 @@ class DocumentExtractService(IDocumentExtractService):
     #         logger.debug("PDF (pdfminer) 文本提取完成。")
     #         return text
     #     except Exception as e:
-    #         logger.error(f"使用 pdfminer 提取 PDF 内容失败: {e}", exc_info=True)
+    #         logger.error(f"使用 pdfminer 提取 PDF 内容失败: {e}")
     #         raise BusinessException(f"解析 PDF 文件失败: {str(e)}") from e

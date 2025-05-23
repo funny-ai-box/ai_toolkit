@@ -255,7 +255,7 @@ async def upload_scenario_document( # Renamed for clarity
     content_id = await scenario_service.add_scenario_content_async(
         user_id=user_id,
         scenario_id=request_id,
-        content_type=InterviewContentType.FILE,
+        content_type=int(InterviewContentType.FILE),
         source_document_id=str(document_id), # Ensure content_value is string
         source_content=""
     )
@@ -270,7 +270,7 @@ async def import_scenario_text( # Renamed for clarity
     content_id = await scenario_service.add_scenario_content_async(
         user_id=user_id,
         scenario_id=request.id, # This is scenario_id
-        content_type=InterviewContentType.TEXT,
+        content_type=int(InterviewContentType.TEXT),
         source_document_id=0, # Or an appropriate placeholder if not a document_id
         source_content=request.text or ""
     )

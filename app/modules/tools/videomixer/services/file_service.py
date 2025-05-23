@@ -71,7 +71,7 @@ class FileService:
             return file_path.replace("\\", "/")
         
         except Exception as e:
-            logger.error(f"文件上传失败: {str(e)}", exc_info=True)
+            logger.error(f"文件上传失败: {str(e)}")
             raise
     
     async def upload_stream_async(self, file_stream, file_name: str, directory: str) -> str:
@@ -108,7 +108,7 @@ class FileService:
             return file_path.replace("\\", "/")
         
         except Exception as e:
-            logger.error(f"文件流上传失败: {str(e)}", exc_info=True)
+            logger.error(f"文件流上传失败: {str(e)}")
             raise
     
     async def upload_to_cdn_async(self, file_path: str, object_key: str) -> str:
@@ -145,7 +145,7 @@ class FileService:
             return cdn_url
         
         except Exception as e:
-            logger.error(f"上传文件到CDN失败: {str(e)}", exc_info=True)
+            logger.error(f"上传文件到CDN失败: {str(e)}")
             raise
     
     def _get_content_type(self, file_path: str) -> str:
@@ -223,7 +223,7 @@ class FileValidationService:
             return True, ""
         
         except Exception as e:
-            logger.error(f"验证视频文件时发生错误: {str(e)}", exc_info=True)
+            logger.error(f"验证视频文件时发生错误: {str(e)}")
             return False, "验证文件时发生错误"
     
     def validate_audio_file(self, file: UploadFile) -> Tuple[bool, str]:
@@ -253,5 +253,5 @@ class FileValidationService:
             return True, ""
         
         except Exception as e:
-            logger.error(f"验证音频文件时发生错误: {str(e)}", exc_info=True)
+            logger.error(f"验证音频文件时发生错误: {str(e)}")
             return False, "验证文件时发生错误"

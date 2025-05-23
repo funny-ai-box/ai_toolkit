@@ -23,7 +23,7 @@ class WebSocketConnection:
         except WebSocketDisconnect:
             logger.warning(f"尝试向已断开的 WebSocket (用户 {self.user_id}) 发送消息失败。")
         except Exception as e:
-            logger.error(f"发送 WebSocket 消息给用户 {self.user_id} 时出错: {e}", exc_info=True)
+            logger.error(f"发送 WebSocket 消息给用户 {self.user_id} 时出错: {e}")
 
     async def receive_text(self) -> str:
         """接收文本消息，处理断开连接"""
@@ -35,7 +35,7 @@ class WebSocketConnection:
             logger.info(f"WebSocket 连接 (用户 {self.user_id}) 主动断开。")
             raise # 重新抛出，让上层处理断开逻辑
         except Exception as e:
-            logger.error(f"接收 WebSocket 消息 (用户 {self.user_id}) 时出错: {e}", exc_info=True)
+            logger.error(f"接收 WebSocket 消息 (用户 {self.user_id}) 时出错: {e}")
             # 也可以选择在这里抛出 WebSocketDisconnect
             raise WebSocketDisconnect(code=1011, reason="接收错误")
 
@@ -150,7 +150,7 @@ class WebSocketHandler:
             await self.disconnect(user_id, websocket)
         except Exception as e:
             # 发生其他错误
-            logger.error(f"处理 WebSocket 连接 (用户 {user_id}) 时发生异常: {e}", exc_info=True)
+            logger.error(f"处理 WebSocket 连接 (用户 {user_id}) 时发生异常: {e}")
             await self.disconnect(user_id, websocket)
             # 可以尝试发送错误信息给客户端，如果连接还允许的话
             # try:

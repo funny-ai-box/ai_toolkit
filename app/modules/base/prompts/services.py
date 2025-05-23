@@ -78,7 +78,7 @@ class PromptTemplateService:
             return new_id
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"添加提示词模板失败 (Key: {request_dto.template_key}): {e}", exc_info=True)
+            logger.error(f"添加提示词模板失败 (Key: {request_dto.template_key}): {e}")
             raise BusinessException(f"添加模板失败: {e}") from e
 
     async def update_async(self, request_dto: PromptTemplateUpdateRequestDto) -> bool:
@@ -137,7 +137,7 @@ class PromptTemplateService:
             return True
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"更新提示词模板失败 (ID: {request_dto.id}): {e}", exc_info=True)
+            logger.error(f"更新提示词模板失败 (ID: {request_dto.id}): {e}")
             raise BusinessException(f"更新模板失败: {e}") from e
 
 
@@ -195,5 +195,5 @@ class PromptTemplateService:
         except NotFoundException:
             raise
         except Exception as e:
-            logger.error(f"获取模板内容时出错 (Key: {template_key}): {e}", exc_info=True)
+            logger.error(f"获取模板内容时出错 (Key: {template_key}): {e}")
             raise BusinessException(f"获取模板内容失败: {e}") from e

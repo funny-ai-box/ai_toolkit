@@ -48,7 +48,7 @@ def create_proxied_http_client() -> Optional[httpx.AsyncClient]:
                 proxy_url_with_auth = str(parts.copy_with(username=settings.PROXY_USERNAME, password=settings.PROXY_PASSWORD))
                 logger.info(f"代理认证信息已准备。")
             except Exception as e:
-                 logger.error(f"解析代理 URL 或添加认证失败: {e}", exc_info=True)
+                 logger.error(f"解析代理 URL 或添加认证失败: {e}")
                  # 如果认证失败，可以选择不启用代理或使用无认证 URL
                  proxy_url_with_auth = settings.PROXY_URL # 回退
 
@@ -128,7 +128,7 @@ async def lifespan(app: FastAPI):
         success = await app.state.user_docs_milvus_service.ensure_collection_exists()
         if success: logger.info("Milvus 用户文档集合已准备就绪。")
         else: logger.warning("警告：Milvus 用户文档集合初始化失败。")
-    except Exception as e: logger.error(f"启动时初始化 Milvus 失败", exc_info=True)
+    except Exception as e: logger.error(f"启动时初始化 Milvus 失败")
 
     # AI Service
     try:
@@ -140,7 +140,7 @@ async def lifespan(app: FastAPI):
         # app.state.ai_services = {} # 使用字典存储
         # app.state.ai_services[chat_provider] = get_chat_ai_service(chat_provider)
         # if embed_provider != chat_provider: app.state.ai_services[embed_provider] = get_chat_ai_service(embed_provider)
-    except Exception as e: logger.error(f"初始化 AI Service 失败: {e}", exc_info=True)
+    except Exception as e: logger.error(f"初始化 AI Service 失败: {e}")
 
     # Storage Service (使用工厂)
     try:
@@ -148,14 +148,14 @@ async def lifespan(app: FastAPI):
         app.state.storage_service = get_storage_service()
         if app.state.storage_service: logger.info("Storage Service 已存入 app.state")
         else: logger.info("未配置 Storage Service。")
-    except Exception as e: logger.error(f"初始化 Storage Service 失败: {e}", exc_info=True)
+    except Exception as e: logger.error(f"初始化 Storage Service 失败: {e}")
 
     try:
         logger.info("初始化并存储 Speech Service...")
         app.state.speech_service = get_speech_service()
         if app.state.speech_service: logger.info("Speech Service 已存入 app.state")
         else: logger.info("未配置 Speech Service。")
-    except Exception as e: logger.error(f"初始化 Speech Service 失败: {e}", exc_info=True)
+    except Exception as e: logger.error(f"初始化 Speech Service 失败: {e}")
 
     # 2. 启动 APScheduler
     start_scheduler() # <--- 调用启动函数

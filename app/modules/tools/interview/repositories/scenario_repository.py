@@ -141,7 +141,7 @@ class InterviewScenarioRepository:
             update(InterviewScenario)
             .where(InterviewScenario.id == id)
             .values(
-                status=InterviewScenarioStatus.PENDING,
+                status=int(InterviewScenarioStatus.PENDING),
                 error_message=None,
                 generate_count=InterviewScenario.generate_count + 1,
                 last_modify_date=now

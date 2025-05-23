@@ -61,9 +61,9 @@ def discover_and_include_routers(app: FastAPI, base_dir: str = "app/modules"):
                             print(f"在模块 '{router_module_path}' 中未找到名为 'router' 的 APIRouter 实例。")
 
                     except ImportError as e:
-                        logger.error(f"导入路由器模块 '{router_module_path}' 失败: {e}", exc_info=True)
+                        logger.error(f"导入路由器模块 '{router_module_path}' 失败: {e}")
                     except Exception as e:
-                        logger.error(f"包含路由器 '{router_module_path}' 时发生未知错误: {e}", exc_info=True)
+                        logger.error(f"包含路由器 '{router_module_path}' 时发生未知错误: {e}")
                  elif module_dir.is_dir() and (module_dir / 'router.py').exists():
                       print(f"目录 '{module_dir}' 包含 router.py 但缺少 __init__.py，无法作为模块导入。")
 

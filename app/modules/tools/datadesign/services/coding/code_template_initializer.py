@@ -71,7 +71,7 @@ class CodeTemplateInitializer:
             self.logger.info("系统代码模板初始化完成。")
             return True
         except Exception as ex:
-            print(f"初始化代码模板失败: {ex}", exc_info=True)
+            print(f"初始化代码模板失败: {ex}")
             return False
 
     def _create_template(self, name: str, language: LanguageType, database_type: DatabaseType) -> CodeTemplate:

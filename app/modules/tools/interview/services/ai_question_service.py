@@ -99,5 +99,5 @@ class AIQuestionService:
             
         except Exception as e:
             error_msg = f"为职位 {position.name} 生成面试问题时发生错误: {str(e)}"
-            print(error_msg, exc_info=True)
+            print(error_msg)
             return False, error_msg, None

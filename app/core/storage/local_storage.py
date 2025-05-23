@@ -24,7 +24,7 @@ class LocalStorageService(IStorageService):
             self.base_path.mkdir(parents=True, exist_ok=True)
             logger.info(f"本地存储目录 '{self.base_path}' 已确保存在。")
         except OSError as e:
-            logger.error(f"创建本地存储目录 '{self.base_path}' 失败: {e}", exc_info=True)
+            logger.error(f"创建本地存储目录 '{self.base_path}' 失败: {e}")
             raise RuntimeError(f"无法创建本地存储目录: {e}") from e
 
         if not self.base_url:
@@ -82,10 +82,10 @@ class LocalStorageService(IStorageService):
             return self.get_url(safe_file_key) # 使用清理过的 key
 
         except OSError as e:
-            logger.error(f"写入本地文件 '{target_path}' 时发生 OS 错误: {e}", exc_info=True)
+            logger.error(f"写入本地文件 '{target_path}' 时发生 OS 错误: {e}")
             raise BusinessException(f"上传文件失败 (IO Error): {e}", code=500) from e
         except Exception as e:
-            logger.error(f"上传文件到本地时发生未知错误: {e}", exc_info=True)
+            logger.error(f"上传文件到本地时发生未知错误: {e}")
             # 尝试删除可能已创建的不完整文件
             if target_path.exists():
                 try:
@@ -126,8 +126,8 @@ class LocalStorageService(IStorageService):
                 logger.warning(f"尝试删除的文件不存在或不是文件: {target_path}")
                 return False # 文件不存在也算删除“成功”？根据需求定，这里返回 False
         except OSError as e:
-            logger.error(f"删除本地文件 '{target_path}' 时发生 OS 错误: {e}", exc_info=True)
+            logger.error(f"删除本地文件 '{target_path}' 时发生 OS 错误: {e}")
             return False # 删除失败
         except Exception as e:
-            logger.error(f"删除本地文件时发生未知错误: {e}", exc_info=True)
+            logger.error(f"删除本地文件时发生未知错误: {e}")
             return False

@@ -179,7 +179,7 @@ async def create_design_task(
         logger.warning(f"创建设计任务业务异常 (user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"创建设计任务发生意外错误 (user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"创建设计任务发生意外错误 (user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="创建任务时发生内部服务器错误")
 
 
@@ -203,7 +203,7 @@ async def update_design_task(
         logger.warning(f"更新设计任务业务异常 (task_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"更新设计任务发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"更新设计任务发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="更新任务时发生内部服务器错误")
 
 
@@ -227,7 +227,7 @@ async def delete_design_task(
         logger.warning(f"删除设计任务业务异常 (task_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"删除设计任务发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"删除设计任务发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="删除任务时发生内部服务器错误")
 
 
@@ -247,7 +247,7 @@ async def get_design_task_detail(
         logger.warning(f"获取设计任务详情业务异常 (task_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"获取设计任务详情发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"获取设计任务详情发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="获取任务详情时发生内部服务器错误")
 
 
@@ -261,7 +261,7 @@ async def get_design_tasks(
         tasks_page = await service.get_design_tasks_async(current_user_id, request_data)
         return ApiResponse[DesignTaskPagedResultDto].success(data=tasks_page)
     except Exception as e: # Catchall for list, less specific errors expected
-        logger.error(f"获取设计任务列表发生意外错误 (user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"获取设计任务列表发生意外错误 (user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="获取任务列表时发生内部服务器错误")
 # endregion
 
@@ -282,7 +282,7 @@ async def get_table_design_detail(
         logger.warning(f"获取表设计详情业务异常 (table_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"获取表设计详情发生意外错误 (table_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"获取表设计详情发生意外错误 (table_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="获取表设计详情时发生内部服务器错误")
 
 
@@ -299,7 +299,7 @@ async def get_table_designs(
         logger.warning(f"获取表设计列表业务异常 (task_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"获取表设计列表发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"获取表设计列表发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="获取表设计列表时发生内部服务器错误")
 # endregion
 
@@ -365,7 +365,7 @@ async def sse_streamer(
             except Exception as e_cancel_service:
                  logger_instance.error(f"SSE service_call_coro (event {event_id}) error during cancellation: {e_cancel_service}")
     except Exception as e_stream:
-        logger_instance.error(f"Error in SSE streamer (event {event_id}): {e_stream}", exc_info=True)
+        logger_instance.error(f"Error in SSE streamer (event {event_id}): {e_stream}")
         yield await send_sse_event(event_id, "error", str(e_stream))
     finally:
         # Ensure service_call_coro is cleaned up if not done (e.g. client disconnects)
@@ -433,7 +433,7 @@ async def chat_upload_document(
         # If BusinessException happens in service, it's likely 400 or specific code.
         raise HTTPException(status_code=e.code or status.HTTP_400_BAD_REQUEST, detail=e.message)
     except Exception as e_outer:
-        logger.error(f"文档上传或聊天发生意外错误 (task_id: {task_id}, user: {current_user_id}): {str(e_outer)}", exc_info=True)
+        logger.error(f"文档上传或聊天发生意外错误 (task_id: {task_id}, user: {current_user_id}): {str(e_outer)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="文档上传或聊天处理失败")
 
 
@@ -485,7 +485,7 @@ async def get_chat_history(
         logger.warning(f"获取聊天历史业务异常 (task_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"获取聊天历史发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"获取聊天历史发生意外错误 (task_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="获取聊天历史时发生内部服务器错误")
 # endregion
 
@@ -506,7 +506,7 @@ async def generate_ddl(
         logger.warning(f"生成DDL脚本业务异常 (task_id: {request_data.task_id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"生成DDL脚本发生意外错误 (task_id: {request_data.task_id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"生成DDL脚本发生意外错误 (task_id: {request_data.task_id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="生成DDL时发生内部服务器错误")
 
 
@@ -526,7 +526,7 @@ async def generate_code(
         logger.warning(f"生成代码业务异常 (table_id: {request_data.table_id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"生成代码发生意外错误 (table_id: {request_data.table_id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"生成代码发生意外错误 (table_id: {request_data.table_id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="生成代码时发生内部服务器错误")
 
 
@@ -539,7 +539,7 @@ async def get_support_language_and_db(
         data = await service.get_support_language_and_db_async()
         return ApiResponse[SupportLanguageAndDbDto].success(data=data)
     except Exception as e:
-        logger.error(f"获取支持的语言和数据库列表发生意外错误: {str(e)}", exc_info=True)
+        logger.error(f"获取支持的语言和数据库列表发生意外错误: {str(e)}")
         return ApiResponse.fail(message="获取支持列表时发生内部服务器错误")
 
 
@@ -552,7 +552,7 @@ async def get_code_templates(
         templates = await service.get_code_templates_async(current_user_id)
         return ApiResponse[List[CodeTemplateDto]].success(data=templates)
     except Exception as e:
-        logger.error(f"获取代码模板列表发生意外错误 (user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"获取代码模板列表发生意外错误 (user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="获取代码模板列表时发生内部服务器错误")
 
 
@@ -572,7 +572,7 @@ async def get_code_template_details(
         logger.warning(f"获取代码模板详情业务异常 (template_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse.fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"获取代码模板详情发生意外错误 (template_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"获取代码模板详情发生意外错误 (template_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="获取模板详情时发生内部服务器错误")
 
 
@@ -586,7 +586,7 @@ async def create_code_template(
         template_id = await service.create_code_template_async(current_user_id, request_data)
         return ApiResponse[int].success(data=template_id, message="代码模板创建成功")
     except Exception as e:
-        logger.error(f"创建代码模板发生意外错误 (user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"创建代码模板发生意外错误 (user: {current_user_id}): {str(e)}")
         return ApiResponse.fail(message="创建代码模板时发生内部服务器错误")
 
 
@@ -603,7 +603,7 @@ async def delete_code_template(
         logger.warning(f"删除代码模板业务异常 (template_id: {request_data.id}, user: {current_user_id}): {e.message}")
         return ApiResponse[bool].fail(message=e.message, code=e.code or status.HTTP_400_BAD_REQUEST, data=False)
     except Exception as e:
-        logger.error(f"删除代码模板发生意外错误 (template_id: {request_data.id}, user: {current_user_id}): {str(e)}", exc_info=True)
+        logger.error(f"删除代码模板发生意外错误 (template_id: {request_data.id}, user: {current_user_id}): {str(e)}")
         return ApiResponse[bool].fail(message="删除代码模板时发生内部服务器错误", data=False)
 
 
@@ -651,6 +651,6 @@ async def get_example_requirements(
         example = await service.get_example_requirements_async(request_data.language, request_data.database_type)
         return ApiResponse[TemplateExampleDto].success(data=example)
     except Exception as e:
-        logger.error(f"获取模板示例需求发生意外错误 (lang: {request_data.language}, db: {request_data.database_type}): {str(e)}", exc_info=True)
+        logger.error(f"获取模板示例需求发生意外错误 (lang: {request_data.language}, db: {request_data.database_type}): {str(e)}")
         return ApiResponse.fail(message="获取示例需求时发生内部服务器错误")
 

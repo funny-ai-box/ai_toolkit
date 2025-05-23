@@ -82,7 +82,7 @@ class AIAnalysisService:
             return result
         
         except Exception as e:
-            logger.error(f"分析场景失败: {str(e)}", exc_info=True)
+            logger.error(f"分析场景失败: {str(e)}")
             raise
     
     async def generate_music_async(self, scene_keywords: str, output_path: str) -> bool:
@@ -132,7 +132,7 @@ class AIAnalysisService:
             return True
         
         except Exception as e:
-            logger.error(f"生成背景音乐失败: {str(e)}", exc_info=True)
+            logger.error(f"生成背景音乐失败: {str(e)}")
             return False
     
     async def _build_message_list(
@@ -265,6 +265,6 @@ class AIAnalysisService:
             return selected_frames
         
         except Exception as e:
-            logger.error(f"处理AI响应失败: {str(e)}", exc_info=True)
+            logger.error(f"处理AI响应失败: {str(e)}")
             # 出错时返回空列表
             return []

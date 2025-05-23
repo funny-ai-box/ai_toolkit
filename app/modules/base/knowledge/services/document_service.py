@@ -113,7 +113,7 @@ class DocumentService:
             cdn_url = await self.storage_service.upload_async(file_stream, file_key, content_type)
             self.logger.info(f"文件上传成功: URL='{cdn_url}'")
         except Exception as e:
-            logger.error(f"上传文件到存储服务失败: {e}", exc_info=True)
+            logger.error(f"上传文件到存储服务失败: {e}")
             raise BusinessException(f"文件上传失败: {str(e)}") from e
         finally:
             await file.close()
@@ -201,7 +201,7 @@ class DocumentService:
             return document_id
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"创建网页导入记录或触发任务失败: {e}", exc_info=True)
+            logger.error(f"创建网页导入记录或触发任务失败: {e}")
             raise BusinessException("导入网页失败") from e
 
     # ... (get_document_async, get_documents_async, get_document_status_async,
@@ -343,7 +343,7 @@ class DocumentService:
                 self.logger.info(f"准备删除存储的文件: Key='{file_key}' (来自 URL='{document.cdn_url}')")
                 await self.storage_service.delete_async(file_key)
             except Exception as e:
-                 logger.error(f"删除存储文件失败 (文档 {document_id}, URL {document.cdn_url}): {e}", exc_info=True)
+                 logger.error(f"删除存储文件失败 (文档 {document_id}, URL {document.cdn_url}): {e}")
 
         # 删除文档主记录
         try:
@@ -358,7 +358,7 @@ class DocumentService:
                 raise BusinessException("删除文档记录失败")
         except Exception as e:
             await self.db.rollback()
-            print(f"提交删除文档事务失败 (ID: {document_id}): {e}", exc_info=True)
+            print(f"提交删除文档事务失败 (ID: {document_id}): {e}")
             raise BusinessException("删除文档时发生错误") from e
 
 
@@ -415,7 +415,7 @@ class DocumentService:
             # --------------------------------
 
         except Exception as e:
-            logger.error(f"[任务执行] 解析文档 {document_id} 失败: {e}", exc_info=True)
+            logger.error(f"[任务执行] 解析文档 {document_id} 失败: {e}")
             await self.db.rollback()
             message = f"解析失败: {e.message}" if isinstance(e, BusinessException) else f"解析时发生内部错误: {str(e)}"
             await self.document_repository.update_status_async(document_id, DocumentStatus.FAILED, message)
@@ -485,7 +485,7 @@ class DocumentService:
             self.logger.info(f"[任务执行] 文档 {document_id} 向量化成功。")
 
         except Exception as e:
-            logger.error(f"[任务执行] 向量化文档 {document_id} 失败: {e}", exc_info=True)
+            logger.error(f"[任务执行] 向量化文档 {document_id} 失败: {e}")
             await self.db.rollback()
             try: await self.user_docs_milvus_service.delete_vectors_by_document_id_async(document.user_id, document_id)
             except Exception as del_e: logger.error(f"回滚删除 Milvus 向量失败: {del_e}")
@@ -540,7 +540,7 @@ class DocumentService:
             self.logger.info(f"[任务执行] 文档 {document_id} 图谱化成功。")
 
         except Exception as e:
-            logger.error(f"[任务执行] 图谱化文档 {document_id} 失败: {e}", exc_info=True)
+            logger.error(f"[任务执行] 图谱化文档 {document_id} 失败: {e}")
             await self.db.rollback()
             message = f"图谱化失败: {e.message}" if isinstance(e, BusinessException) else f"图谱化时发生内部错误: {str(e)}"
             await self.document_repository.update_graph_status_async(document_id, DocumentStatus.FAILED, message)

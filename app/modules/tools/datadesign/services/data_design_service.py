@@ -90,7 +90,7 @@ class DataDesignService:
             new_id = await self.design_task_repo.add_async(task)
             return new_id
         except Exception as ex:
-            self._logger.error(f"创建设计任务失败: {ex}", exc_info=True)
+            self._logger.error(f"创建设计任务失败: {ex}")
             raise BusinessException("创建设计任务失败", ex)
 
     async def update_design_task_async(self, user_id: int, request: UpdateDesignTaskRequestDto) -> bool:
@@ -107,7 +107,7 @@ class DataDesignService:
         except NotFoundException:
             raise
         except Exception as ex:
-            self._logger.error(f"更新设计任务失败 (id: {request.id}): {ex}", exc_info=True)
+            self._logger.error(f"更新设计任务失败 (id: {request.id}): {ex}")
             raise BusinessException("更新设计任务失败", ex)
 
     async def delete_design_task_async(self, user_id: int, task_id: int) -> bool:
@@ -131,7 +131,7 @@ class DataDesignService:
         except NotFoundException:
             raise
         except Exception as ex:
-            self._logger.error(f"删除设计任务失败 (id: {task_id}): {ex}", exc_info=True)
+            self._logger.error(f"删除设计任务失败 (id: {task_id}): {ex}")
             raise BusinessException("删除设计任务失败", ex)
 
     async def get_design_task_async(self, user_id: int, task_id: int) -> DesignTaskDetailDto:
@@ -144,7 +144,7 @@ class DataDesignService:
         except NotFoundException:
             raise
         except Exception as ex:
-            self._logger.error(f"获取设计任务详情失败 (id: {task_id}): {ex}", exc_info=True)
+            self._logger.error(f"获取设计任务详情失败 (id: {task_id}): {ex}")
             raise BusinessException("获取设计任务详情失败", ex)
 
     async def get_design_tasks_async(self, user_id: int, request: DesignTaskListRequestDto) -> DesignTaskPagedResultDto:
@@ -176,7 +176,7 @@ class DataDesignService:
                 total_pages=math.ceil(total_count / request.page_size) if request.page_size > 0 and total_count > 0 else 0
             )
         except Exception as ex:
-            self._logger.error(f"获取设计任务列表失败 (user_id: {user_id}): {ex}", exc_info=True)
+            self._logger.error(f"获取设计任务列表失败 (user_id: {user_id}): {ex}")
             raise BusinessException("获取设计任务列表失败", ex)
     # endregion
 
@@ -268,7 +268,7 @@ class DataDesignService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"获取表设计详情失败 (id: {table_id}): {ex}", exc_info=True)
+            self._logger.error(f"获取表设计详情失败 (id: {table_id}): {ex}")
             raise BusinessException("获取表设计详情失败", ex)
 
     async def get_table_designs_async(self, user_id: int, task_id: int) -> List[TableDesignListItemDto]:
@@ -312,7 +312,7 @@ class DataDesignService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"获取表设计列表失败 (task_id: {task_id}): {ex}", exc_info=True)
+            self._logger.error(f"获取表设计列表失败 (task_id: {task_id}): {ex}")
             raise BusinessException("获取表设计列表失败", ex)
     # endregion
 
@@ -367,7 +367,7 @@ class DataDesignService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"上传文档失败: {ex}", exc_info=True)
+            self._logger.error(f"上传文档失败: {ex}")
             raise BusinessException("上传文档失败", ex)
 
     async def streaming_chat_async(
@@ -387,7 +387,7 @@ class DataDesignService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"流式聊天失败 (task_id: {request.task_id}): {ex}", exc_info=True)
+            self._logger.error(f"流式聊天失败 (task_id: {request.task_id}): {ex}")
             raise BusinessException("流式聊天失败", ex)
 
     async def _save_database_design_async(self, task_id: int, design_dto: DatabaseDesignJsonDto) -> bool:
@@ -505,7 +505,7 @@ class DataDesignService:
             self._logger.info(f"任务 {task_id}: 数据库设计保存成功。")
             return True
         except Exception as ex:
-            self._logger.error(f"保存数据库设计失败 (task_id: {task_id}): {ex}", exc_info=True)
+            self._logger.error(f"保存数据库设计失败 (task_id: {task_id}): {ex}")
             # Do not re-raise as BusinessException here, as it's an internal process error
             return False # Indicate failure
 
@@ -522,7 +522,7 @@ class DataDesignService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"获取聊天历史失败 (task_id: {task_id}): {ex}", exc_info=True)
+            self._logger.error(f"获取聊天历史失败 (task_id: {task_id}): {ex}")
             raise BusinessException("获取聊天历史失败", ex)
     # endregion
 
@@ -633,7 +633,7 @@ class DataDesignService:
         except (BusinessException, NotFoundException):
             raise
         except Exception as ex:
-            self._logger.error(f"生成DDL脚本失败: {ex}", exc_info=True)
+            self._logger.error(f"生成DDL脚本失败: {ex}")
             raise BusinessException("生成DDL脚本失败", ex)
 
     async def generate_code_async(self, user_id: int, request: GenerateCodeRequestDto) -> GenerateCodeResultDto:
@@ -740,7 +740,7 @@ class DataDesignService:
                         content=rendered_content
                     ))
                 except Exception as render_ex:
-                    self._logger.error(f"渲染模板明细 {dtl_entity.template_dtl_name} (ID: {dtl_entity.id}) 失败: {render_ex}", exc_info=True)
+                    self._logger.error(f"渲染模板明细 {dtl_entity.template_dtl_name} (ID: {dtl_entity.id}) 失败: {render_ex}")
                     # Optionally add a file with error message, or skip
                     generated_files.append(CodeFileDto(
                         name=dtl_entity.template_dtl_name,
@@ -758,7 +758,7 @@ class DataDesignService:
         except (BusinessException, NotFoundException):
             raise
         except Exception as ex:
-            self._logger.error(f"生成代码失败: {ex}", exc_info=True)
+            self._logger.error(f"生成代码失败: {ex}")
             raise BusinessException("生成代码失败", ex)
 
     async def get_code_templates_async(self, user_id: int) -> List[CodeTemplateDto]:
@@ -777,7 +777,7 @@ class DataDesignService:
                 ) for t in templates_entities
             ]
         except Exception as ex:
-            self._logger.error(f"获取代码模板列表失败 (user_id: {user_id}): {ex}", exc_info=True)
+            self._logger.error(f"获取代码模板列表失败 (user_id: {user_id}): {ex}")
             raise BusinessException("获取代码模板列表失败", ex)
 
     async def get_code_template_dtls_async(self, user_id: int, template_id: int) -> List[CodeTemplateDetailDto]:
@@ -792,7 +792,7 @@ class DataDesignService:
         except NotFoundException:
             raise
         except Exception as ex:
-            self._logger.error(f"获取代码模板详情失败 (template_id: {template_id}): {ex}", exc_info=True)
+            self._logger.error(f"获取代码模板详情失败 (template_id: {template_id}): {ex}")
             raise BusinessException("获取代码模板详情失败", ex)
 
     async def create_code_template_async(self, user_id: int, request: CreateCodeTemplateDto) -> int:
@@ -808,7 +808,7 @@ class DataDesignService:
             new_id = await self.code_template_repo.add_async(template_entity)
             return new_id
         except Exception as ex:
-            self._logger.error(f"创建代码模板失败 (user_id: {user_id}): {ex}", exc_info=True)
+            self._logger.error(f"创建代码模板失败 (user_id: {user_id}): {ex}")
             raise BusinessException("创建代码模板失败", ex)
 
     async def delete_code_template_async(self, user_id: int, template_id: int) -> bool:
@@ -823,7 +823,7 @@ class DataDesignService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"删除代码模板失败 (template_id: {template_id}): {ex}", exc_info=True)
+            self._logger.error(f"删除代码模板失败 (template_id: {template_id}): {ex}")
             raise BusinessException("删除代码模板失败", ex)
 
     async def generate_templates_with_ai_async(
@@ -855,7 +855,7 @@ class DataDesignService:
         except BusinessException:
             raise
         except Exception as ex:
-            self._logger.error(f"AI生成代码模板明细失败 (template_id: {template_id}): {ex}", exc_info=True)
+            self._logger.error(f"AI生成代码模板明细失败 (template_id: {template_id}): {ex}")
             raise BusinessException(f"AI生成代码模板明细失败: {str(ex)}")
 
 

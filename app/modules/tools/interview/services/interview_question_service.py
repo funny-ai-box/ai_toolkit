@@ -95,7 +95,7 @@ class InterviewQuestionService:
         except (NotFoundException, ForbiddenException):
             raise
         except Exception as e:
-            print(f"获取面试问题详情时发生错误: {str(e)}", exc_info=True)
+            print(f"获取面试问题详情时发生错误: {str(e)}")
             raise BusinessException("获取面试问题详情失败")
     
     async def get_questions_async(self, user_id: int, request: QuestionsListRequestDto) -> PagedResultDto[QuestionListItemDto]:
@@ -158,7 +158,7 @@ class InterviewQuestionService:
         except ForbiddenException:
             raise
         except Exception as e:
-            print(f"获取面试问题列表时发生错误: {str(e)}", exc_info=True)
+            print(f"获取面试问题列表时发生错误: {str(e)}")
             raise BusinessException("获取面试问题列表失败")
     
     async def generate_questions_async(self, scenario_id: int, content_dtls: List[InterviewScenarioContentItemDto]) -> None:
@@ -235,7 +235,7 @@ class InterviewQuestionService:
         except (NotFoundException, ValidationException):
             raise
         except Exception as e:
-            print(f"生成面试问题时发生错误: {str(e)}", exc_info=True)
+            print(f"生成面试问题时发生错误: {str(e)}")
             raise BusinessException(f"生成面试问题时发生错误: {str(e)}")
     
     async def update_question_async(self, user_id: int, request: QuestionsUpdateRequestDto) -> bool:
@@ -268,7 +268,7 @@ class InterviewQuestionService:
         except (NotFoundException, ForbiddenException):
             raise
         except Exception as e:
-            print(f"更新面试问题时发生错误: {str(e)}", exc_info=True)
+            print(f"更新面试问题时发生错误: {str(e)}")
             raise BusinessException("更新面试问题失败")
     
     def _truncate_answer(self, answer: str, max_length: int) -> str:

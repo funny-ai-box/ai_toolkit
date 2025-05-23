@@ -33,7 +33,7 @@ class AliyunOssStorageService(IStorageService):
             self.bucket = oss2.Bucket(self.auth, self.endpoint, self.bucket_name)
             logger.info(f"阿里云 OSS 服务已初始化。Endpoint: {self.endpoint}, Bucket: {self.bucket_name}")
         except Exception as e:
-            logger.error(f"初始化阿里云 OSS 服务失败: {e}", exc_info=True)
+            logger.error(f"初始化阿里云 OSS 服务失败: {e}")
             raise RuntimeError(f"初始化阿里云 OSS 服务失败: {e}") from e
 
     async def upload_async(
@@ -87,10 +87,10 @@ class AliyunOssStorageService(IStorageService):
             # ... (后续处理同上) ...
 
         except oss2.exceptions.OssError as e:
-            logger.error(f"上传文件到 OSS 时发生错误: status={e.status}, code={e.code}, message={e.message}, request_id={e.request_id}", exc_info=True)
+            logger.error(f"上传文件到 OSS 时发生错误: status={e.status}, code={e.code}, message={e.message}, request_id={e.request_id}")
             raise BusinessException(f"上传文件到云存储失败: {e.message}", code=e.status) from e
         except Exception as e:
-            logger.error(f"上传文件到 OSS 时发生未知错误: {e}", exc_info=True)
+            logger.error(f"上传文件到 OSS 时发生未知错误: {e}")
             raise BusinessException(f"上传文件失败: {str(e)}", code=500) from e
 
     def get_url(self, file_key: str) -> str:
@@ -108,7 +108,7 @@ class AliyunOssStorageService(IStorageService):
                 signed_url = self.bucket.sign_url('GET', clean_file_key, self.url_expiration)
                 return signed_url
             except Exception as e:
-                logger.error(f"生成 OSS 文件签名 URL 失败 for key '{clean_file_key}': {e}", exc_info=True)
+                logger.error(f"生成 OSS 文件签名 URL 失败 for key '{clean_file_key}': {e}")
                 # 返回一个无签名的 URL 作为备用，但这可能无法访问私有 Bucket
                 # 需要确认 Bucket 的读写权限设置
                 endpoint_no_proto = self.endpoint.replace("https://", "").replace("http://", "")
@@ -141,8 +141,8 @@ class AliyunOssStorageService(IStorageService):
             logger.warning(f"尝试从 OSS 删除文件，但文件不存在: key='{clean_file_key}'")
             return True # 文件不存在，视为删除成功
         except oss2.exceptions.OssError as e:
-            logger.error(f"从 OSS 删除文件时发生错误: status={e.status}, code={e.code}, message={e.message}, request_id={e.request_id}", exc_info=True)
+            logger.error(f"从 OSS 删除文件时发生错误: status={e.status}, code={e.code}, message={e.message}, request_id={e.request_id}")
             return False
         except Exception as e:
-            logger.error(f"从 OSS 删除文件时发生未知错误: {e}", exc_info=True)
+            logger.error(f"从 OSS 删除文件时发生未知错误: {e}")
             return False
