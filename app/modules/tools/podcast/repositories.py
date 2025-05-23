@@ -102,6 +102,7 @@ class PodcastTaskScriptRepository:
         
         self.db.add_all(script_items)
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def add_async(self, script_item: PodcastTaskScript) -> bool:
@@ -121,6 +122,7 @@ class PodcastTaskScriptRepository:
         
         self.db.add(script_item)
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def update_async(self, script_item: PodcastTaskScript) -> bool:
@@ -136,6 +138,7 @@ class PodcastTaskScriptRepository:
         script_item.last_modify_date = datetime.datetime.now()
         await self.db.merge(script_item)
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def delete_by_podcast_id_async(self, podcast_id: int) -> bool:
@@ -150,6 +153,7 @@ class PodcastTaskScriptRepository:
         """
         query = delete(PodcastTaskScript).where(PodcastTaskScript.podcast_id == podcast_id)
         result = await self.db.execute(query)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def get_pending_audio_scripts_async(self, limit: int = 20) -> List[PodcastTaskScript]:
@@ -207,6 +211,7 @@ class PodcastTaskScriptRepository:
         
         result = await self.db.execute(query)
         await self.db.flush()
+        await self.db.commit()
         return result.rowcount > 0
 
 
@@ -277,6 +282,7 @@ class PodcastScriptHistoryRepository:
         
         self.db.add(new_history)
         await self.db.flush()
+        await self.db.commit()
         return new_history.id
     
     async def update_status_async(
@@ -302,6 +308,7 @@ class PodcastScriptHistoryRepository:
             )
         result = await self.db.execute(query)
         await self.db.flush()
+        await self.db.commit()
         return result.rowcount > 0
     
     async def move_script_to_history_async(self, podcast_id: int) -> bool:
@@ -352,6 +359,7 @@ class PodcastScriptHistoryRepository:
                 .where(PodcastTaskScript.podcast_id == podcast_id)
             await self.db.execute(delete_query)
             await self.db.flush()
+            await self.db.commit()
         
         return True
 
@@ -467,6 +475,7 @@ class PodcastVoiceRepository:
         
         self.db.add(voice)
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def update_async(self, voice: PodcastVoiceDefinition) -> bool:
@@ -482,6 +491,7 @@ class PodcastVoiceRepository:
         voice.last_modify_date = datetime.datetime.now()
         await self.db.merge(voice)
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def delete_async(self, id: int) -> bool:
@@ -496,6 +506,7 @@ class PodcastVoiceRepository:
         """
         query = delete(PodcastVoiceDefinition).where(PodcastVoiceDefinition.id == id)
         result = await self.db.execute(query)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def set_active_status_async(self, id: int, is_active: bool) -> bool:
@@ -517,4 +528,5 @@ class PodcastVoiceRepository:
             )
         result = await self.db.execute(query)
         await self.db.flush()
+        await self.db.commit()
         return result.rowcount > 0

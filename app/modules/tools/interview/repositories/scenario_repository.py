@@ -44,6 +44,7 @@ class InterviewScenarioRepository:
         
         self.db.add(scenario)
         await self.db.flush()
+        await self.db.commit()
         return scenario
     
     async def get_by_id_async(self, id: int) -> Optional[InterviewScenario]:
@@ -122,6 +123,7 @@ class InterviewScenarioRepository:
         """
         scenario.last_modify_date = datetime.datetime.now()
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def start_analysis_question_async(self, id: int) -> bool:
@@ -146,6 +148,7 @@ class InterviewScenarioRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def lock_processing_status_async(self, id: int) -> bool:
@@ -170,6 +173,7 @@ class InterviewScenarioRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_status_async(self, id: int, status: InterviewScenarioStatus, error_message: Optional[str] = None) -> bool:
@@ -194,6 +198,7 @@ class InterviewScenarioRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_async(self, id: int) -> bool:
@@ -215,6 +220,7 @@ class InterviewScenarioRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def get_pending_scenarios_async(self, limit: int = 10) -> List[InterviewScenario]:

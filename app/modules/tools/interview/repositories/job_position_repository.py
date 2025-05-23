@@ -44,6 +44,7 @@ class JobPositionRepository:
         
         self.db.add(position)
         await self.db.flush()
+        await self.db.commit()
         return position
     
     async def batch_add_async(self, positions: List[JobPosition]) -> List[JobPosition]:
@@ -67,6 +68,7 @@ class JobPositionRepository:
             self.db.add(position)
         
         await self.db.flush()
+        await self.db.commit()
         return positions
     
     async def get_by_id_async(self, id: int) -> Optional[JobPosition]:
@@ -109,6 +111,7 @@ class JobPositionRepository:
         """
         position.last_modify_date = datetime.datetime.now()
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def update_status_async(
@@ -138,6 +141,7 @@ class JobPositionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_async(self, id: int) -> bool:
@@ -156,6 +160,7 @@ class JobPositionRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_by_scenario_id_async(self, scenario_id: int) -> bool:
@@ -174,4 +179,5 @@ class JobPositionRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0

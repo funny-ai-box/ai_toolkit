@@ -39,7 +39,7 @@ class DocumentRepository:
     async def update_status_async(self, doc_id: int, status: DocumentStatus, message: str = "", content_length: int = 0) -> bool:
         """更新文档解析状态"""
         values_to_update = {
-            "status": status,
+            "status": status.value,
             "last_modify_date": func.now()
         }
         if message:

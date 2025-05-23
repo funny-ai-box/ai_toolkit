@@ -1,7 +1,8 @@
 import json
 import logging
 from typing import List, Callable, Optional, AsyncGenerator
-from app.core.ai.chat.base import IChatAIService, InputMessage, ChatRoleType # Assuming InputMessage & ChatRoleType in base
+from app.core.ai.chat.base import IChatAIService, InputMessage # Assuming InputMessage & ChatRoleType in base
+from app.core.ai.dtos import ChatRoleType
 from app.core.exceptions import BusinessException
 from app.modules.tools.datadesign.enums import LanguageType, DatabaseType
 from app.modules.tools.datadesign.dtos import CodeTemplateGeneratorDto # Local DTO

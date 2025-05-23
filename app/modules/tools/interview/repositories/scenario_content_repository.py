@@ -88,6 +88,7 @@ class InterviewScenarioContentRepository:
         
         self.db.add(content_item)
         await self.db.flush()
+        await self.db.commit()
         return content_item.id
     
     async def update_async(self, content_item: InterviewScenarioContent) -> bool:
@@ -102,6 +103,7 @@ class InterviewScenarioContentRepository:
         """
         content_item.last_modify_date = datetime.datetime.now()
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def delete_by_scenario_id_async(self, scenario_id: int) -> bool:
@@ -120,6 +122,7 @@ class InterviewScenarioContentRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_async(self, id: int) -> bool:
@@ -138,4 +141,5 @@ class InterviewScenarioContentRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0

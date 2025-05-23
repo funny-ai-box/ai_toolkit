@@ -41,6 +41,7 @@ class InterviewInteractionRepository:
         
         self.db.add(interaction)
         await self.db.flush()
+        await self.db.commit()
         return interaction
     
     async def batch_add_async(self, interactions: List[InterviewInteraction]) -> bool:
@@ -63,6 +64,7 @@ class InterviewInteractionRepository:
             self.db.add(interaction)
         
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def get_by_id_async(self, id: int) -> Optional[InterviewInteraction]:
@@ -108,6 +110,7 @@ class InterviewInteractionRepository:
             更新结果
         """
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def batch_update_async(self, interactions: List[InterviewInteraction]) -> bool:
@@ -124,6 +127,7 @@ class InterviewInteractionRepository:
             return False
         
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def delete_async(self, id: int) -> bool:
@@ -142,6 +146,7 @@ class InterviewInteractionRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_by_session_id_async(self, session_id: int) -> bool:
@@ -160,4 +165,5 @@ class InterviewInteractionRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0

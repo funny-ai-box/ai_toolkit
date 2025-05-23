@@ -113,7 +113,7 @@ class DocumentService:
             cdn_url = await self.storage_service.upload_async(file_stream, file_key, content_type)
             self.logger.info(f"文件上传成功: URL='{cdn_url}'")
         except Exception as e:
-            print(f"上传文件到存储服务失败: {e}", exc_info=True)
+            logger.error(f"上传文件到存储服务失败: {e}", exc_info=True)
             raise BusinessException(f"文件上传失败: {str(e)}") from e
         finally:
             await file.close()
@@ -184,7 +184,7 @@ class DocumentService:
             document_id = await self.document_repository.add_document_async(document)
             await self.document_log_repository.add_document_log_async(DocumentLog(
                 user_id=user_id, document_id=document_id,
-                log_type=DocumentLogType.DOCUMENT_PARSING, message="网页导入请求已创建，等待后台处理"
+                log_type=int(DocumentLogType.DOCUMENT_PARSING), message="网页导入请求已创建，等待后台处理"
             ))
 
             # --- 调用 JobPersistenceService 创建任务 ---
@@ -201,7 +201,7 @@ class DocumentService:
             return document_id
         except Exception as e:
             await self.db.rollback()
-            print(f"创建网页导入记录或触发任务失败: {e}", exc_info=True)
+            logger.error(f"创建网页导入记录或触发任务失败: {e}", exc_info=True)
             raise BusinessException("导入网页失败") from e
 
     # ... (get_document_async, get_documents_async, get_document_status_async,
@@ -378,7 +378,7 @@ class DocumentService:
             await self.document_repository.update_status_async(document_id, DocumentStatus.PROCESSING)
             await self.document_log_repository.add_document_log_async(DocumentLog(
                 user_id=document.user_id, document_id=document_id,
-                log_type=DocumentLogType.DOCUMENT_PARSING, message="开始解析文档内容"
+                log_type=int(DocumentLogType.DOCUMENT_PARSING), message="开始解析文档内容"
             ))
             await self.db.commit() # 提交状态和日志
 
@@ -396,7 +396,7 @@ class DocumentService:
             await self.document_repository.update_status_async(document_id, DocumentStatus.COMPLETED, "文档解析完成", content_length)
             await self.document_log_repository.add_document_log_async(DocumentLog(
                  user_id=document.user_id, document_id=document_id,
-                 log_type=DocumentLogType.DOCUMENT_PARSING, message=f"文档解析成功，内容长度: {content_length}"
+                 log_type=int(DocumentLogType.DOCUMENT_PARSING), message=f"文档解析成功，内容长度: {content_length}"
             ))
             await self.db.commit() # 提交最终结果
             self.logger.info(f"[任务执行] 文档 {document_id} 解析成功。")
@@ -415,13 +415,13 @@ class DocumentService:
             # --------------------------------
 
         except Exception as e:
-            print(f"[任务执行] 解析文档 {document_id} 失败: {e}", exc_info=True)
+            logger.error(f"[任务执行] 解析文档 {document_id} 失败: {e}", exc_info=True)
             await self.db.rollback()
             message = f"解析失败: {e.message}" if isinstance(e, BusinessException) else f"解析时发生内部错误: {str(e)}"
             await self.document_repository.update_status_async(document_id, DocumentStatus.FAILED, message)
             await self.document_log_repository.add_document_log_async(DocumentLog(
                  user_id=document.user_id, document_id=document_id,
-                 log_type=DocumentLogType.DOCUMENT_PARSING, message=f"文档解析失败: {str(e)}"
+                 log_type=int(DocumentLogType.DOCUMENT_PARSING), message=f"文档解析失败: {str(e)}"
             ))
             await self.db.commit() # 提交失败状态              
             raise BusinessException(f"文档 {document_id} 解析异常")
@@ -485,7 +485,7 @@ class DocumentService:
             self.logger.info(f"[任务执行] 文档 {document_id} 向量化成功。")
 
         except Exception as e:
-            print(f"[任务执行] 向量化文档 {document_id} 失败: {e}", exc_info=True)
+            logger.error(f"[任务执行] 向量化文档 {document_id} 失败: {e}", exc_info=True)
             await self.db.rollback()
             try: await self.user_docs_milvus_service.delete_vectors_by_document_id_async(document.user_id, document_id)
             except Exception as del_e: logger.error(f"回滚删除 Milvus 向量失败: {del_e}")
@@ -540,7 +540,7 @@ class DocumentService:
             self.logger.info(f"[任务执行] 文档 {document_id} 图谱化成功。")
 
         except Exception as e:
-            print(f"[任务执行] 图谱化文档 {document_id} 失败: {e}", exc_info=True)
+            logger.error(f"[任务执行] 图谱化文档 {document_id} 失败: {e}", exc_info=True)
             await self.db.rollback()
             message = f"图谱化失败: {e.message}" if isinstance(e, BusinessException) else f"图谱化时发生内部错误: {str(e)}"
             await self.document_repository.update_graph_status_async(document_id, DocumentStatus.FAILED, message)

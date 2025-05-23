@@ -247,18 +247,17 @@ async def upload_scenario_document( # Renamed for clarity
         user_id=user_id,
         app_type=DocumentAppType.INTERVIEW,
         file=file,
-        title="", # Or use file.filename
-        target_id=request_id, # This is the scenario_id, used as target_id in Document
-        skip_vectorize=True, # Assuming comment is correct
-        skip_graph=True      # Assuming comment is correct
+        title=file.filename or "",  # 使用文件名作为标题
+        reference_id=request_id,     # 使用 reference_id 关联到场景
+        need_vector=False,           # 面试场景不需要向量化
+        need_graph=False             # 面试场景不需要图谱化
     )
-    
     content_id = await scenario_service.add_scenario_content_async(
         user_id=user_id,
         scenario_id=request_id,
         content_type=InterviewContentType.FILE,
-        content_value=str(document_id), # Ensure content_value is string
-        text_content=""
+        source_document_id=str(document_id), # Ensure content_value is string
+        source_content=""
     )
     return ApiResponse.success(data=content_id, message="文档上传成功并已关联到场景")
 
@@ -272,8 +271,8 @@ async def import_scenario_text( # Renamed for clarity
         user_id=user_id,
         scenario_id=request.id, # This is scenario_id
         content_type=InterviewContentType.TEXT,
-        content_value="0", # Or an appropriate placeholder if not a document_id
-        text_content=request.text or ""
+        source_document_id=0, # Or an appropriate placeholder if not a document_id
+        source_content=request.text or ""
     )
     return ApiResponse.success(data=content_id, message="文本导入成功")
 

@@ -42,6 +42,7 @@ class InterviewQuestionRepository:
         
         self.db.add(question)
         await self.db.flush()
+        await self.db.commit()
         return question
     
     async def batch_add_async(self, questions: List[InterviewQuestion]) -> bool:
@@ -64,6 +65,7 @@ class InterviewQuestionRepository:
             self.db.add(question)
         
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def get_by_id_async(self, id: int) -> Optional[InterviewQuestion]:
@@ -160,6 +162,7 @@ class InterviewQuestionRepository:
             更新结果
         """
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def delete_async(self, id: int) -> bool:
@@ -178,6 +181,7 @@ class InterviewQuestionRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_by_scenario_id_async(self, scenario_id: int) -> bool:
@@ -196,6 +200,7 @@ class InterviewQuestionRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_by_scenario_job_id_async(self, scenario_id: int, job_position_id: int) -> bool:
@@ -218,4 +223,5 @@ class InterviewQuestionRepository:
             .values(is_deleted=True)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0

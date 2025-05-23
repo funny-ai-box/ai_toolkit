@@ -83,7 +83,7 @@ class DataDesignService:
         try:
             task = DesignTask(
                 user_id=user_id,
-                task_name=request.task_name,
+                task_name=request.taskName,
                 description=request.description or ""
             )
             # ID and timestamps are set by repository

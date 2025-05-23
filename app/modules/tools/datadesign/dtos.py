@@ -28,7 +28,7 @@ class CreateDesignTaskRequestDto(BaseModel):
     """创建设计任务请求DTO"""
     # OLD: task_name: constr(min_length=1, max_length=255) = Field(..., description="任务名称")
     # NEW:
-    task_name: Annotated[str, Field(min_length=1, max_length=255, description="任务名称")]
+    taskName: Annotated[str, Field(min_length=1, max_length=255, description="任务名称")]
     description: Optional[str] = Field(None, description="任务描述")
 
 class UpdateDesignTaskRequestDto(BaseModel):

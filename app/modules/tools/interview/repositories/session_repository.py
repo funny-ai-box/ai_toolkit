@@ -44,6 +44,7 @@ class InterviewSessionRepository:
         
         self.db.add(session)
         await self.db.flush()
+        await self.db.commit()
         return session
     
     async def get_by_id_async(self, id: int) -> Optional[InterviewSession]:
@@ -127,6 +128,7 @@ class InterviewSessionRepository:
         """
         session.last_modify_date = datetime.datetime.now()
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def delete_async(self, id: int) -> bool:
@@ -142,9 +144,13 @@ class InterviewSessionRepository:
         stmt = (
             update(InterviewSession)
             .where(InterviewSession.id == id)
-            .values(is_deleted=True)
+            .values(
+                is_deleted=True,
+                last_modify_date=datetime.datetime.now()
+            )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def lock_processing_status_async(self, id: int) -> bool:
@@ -169,6 +175,7 @@ class InterviewSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def start_evaluate_session_async(self, id: int) -> bool:
@@ -192,6 +199,7 @@ class InterviewSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_evaluate_status_async(
@@ -221,6 +229,7 @@ class InterviewSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def get_pending_evaluate_sessions_async(self, limit: int = 10) -> List[InterviewSession]:
