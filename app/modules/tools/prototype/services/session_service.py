@@ -66,8 +66,10 @@ class PrototypeSessionService:
                 user_id=user_id,
                 name=request.name if request.name else "新的会话",
                 description=request.description,
-                status=PrototypeSessionStatus.REQUIREMENT_GATHERING,
+                status=int(PrototypeSessionStatus.REQUIREMENT_GATHERING),
             )
+
+            print(f"创建会话: {session}")
             
             # 保存会话
             session_id = await self.session_repository.add_async(session)
@@ -78,7 +80,7 @@ class PrototypeSessionService:
             welcome_message = PrototypeMessage(
                 session_id=session_id,
                 user_id=user_id,
-                message_type=PrototypeMessageType.SYSTEM,
+                message_type=PrototypeMessageType.SYSTEM.value,
                 content="欢迎使用AI原型设计工具。请描述您需要设计的应用原型，包括功能、页面结构、风格、配色等。"
             )
             await self.message_repository.add_async(welcome_message)

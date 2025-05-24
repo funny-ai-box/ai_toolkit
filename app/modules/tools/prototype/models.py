@@ -18,8 +18,8 @@ class PrototypeSession(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, name="UserId", comment="用户ID")
     name: Mapped[str] = mapped_column(String(255), nullable=True, name="Name", comment="会话名称")
     description: Mapped[str] = mapped_column(String(1000), nullable=True, name="Description", comment="会话描述")
-    status: Mapped[PrototypeSessionStatus] = mapped_column(
-        Enum(PrototypeSessionStatus), nullable=False, name="Status", comment="会话状态"
+    status: Mapped[int] = mapped_column(
+        Integer, nullable=False, name="Status", comment="会话状态"
     )
     requirements: Mapped[str] = mapped_column(Text, nullable=True, name="Requirements", comment="需求描述（结构化JSON）")
     page_structure: Mapped[str] = mapped_column(Text, nullable=True, name="PageStructure", comment="页面结构（结构化JSON）")
@@ -86,8 +86,8 @@ class PrototypeMessage(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID")
     session_id: Mapped[int] = mapped_column(BigInteger, nullable=False, name="SessionId", comment="会话ID")
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, name="UserId", comment="用户ID")
-    message_type: Mapped[PrototypeMessageType] = mapped_column(
-        Enum(PrototypeMessageType), nullable=False, name="MessageType", comment="消息类型"
+    message_type: Mapped[int] = mapped_column(
+        Integer, nullable=False, name="MessageType", comment="消息类型"
     )
     content: Mapped[str] = mapped_column(Text, nullable=True, name="Content", comment="消息内容")
     is_code: Mapped[bool] = mapped_column(

@@ -18,7 +18,7 @@ from app.api.dependencies import (
     get_storage_service_from_state,
     RateLimiter
 )
-from app.core.dtos import ApiResponse, BaseIdRequestDto, PagedResultDto
+from app.core.dtos import ApiResponse, BaseIdRequestDto, BasePageRequestDto, PagedResultDto
 from app.core.exceptions import NotFoundException, BusinessException, ForbiddenException
 from app.modules.base.prompts.services import PromptTemplateService
 
@@ -192,7 +192,7 @@ async def get_session_detail(
     description="获取当前用户的会话列表"
 )
 async def get_session_list(
-    request: BaseIdRequestDto = Body(...),
+    request: BasePageRequestDto = Body(...),  # 修复：使用 BasePageRequestDto
     user_id: int = Depends(get_current_active_user_id),
     service: PrototypeSessionService = Depends(_get_session_service)
 ):

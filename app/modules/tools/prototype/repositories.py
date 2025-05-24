@@ -115,6 +115,7 @@ class PrototypeSessionRepository:
         session.last_modify_date = now
         self.db.add(session)
         await self.db.flush()
+        await self.db.commit()
         return session.id
     
     async def update_session_name_from_first_message_async(self, id: int, message: str) -> bool:
@@ -155,6 +156,7 @@ class PrototypeSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def lock_generating_code_async(self, id: int, locked: bool) -> bool:
@@ -177,6 +179,7 @@ class PrototypeSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_async(self, session: PrototypeSession) -> bool:
@@ -191,9 +194,9 @@ class PrototypeSessionRepository:
         """
         session.last_modify_date = datetime.datetime.now()
         await self.db.merge(session)
+        await self.db.commit()
         return True
     
-    # app/modules/tools/prototype/repositories.py (continued)
     async def delete_async(self, id: int) -> bool:
         """
         删除会话
@@ -206,6 +209,7 @@ class PrototypeSessionRepository:
         """
         stmt = delete(PrototypeSession).where(PrototypeSession.id == id)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_status_async(self, id: int, status: PrototypeSessionStatus) -> bool:
@@ -228,6 +232,7 @@ class PrototypeSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_page_structure_async(self, id: int, page_structure: str) -> bool:
@@ -250,6 +255,7 @@ class PrototypeSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_requirements_async(self, id: int, requirements: str) -> bool:
@@ -272,6 +278,7 @@ class PrototypeSessionRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
 
 
@@ -352,6 +359,7 @@ class PrototypePageRepository:
         page.last_modify_date = now
         self.db.add(page)
         await self.db.flush()
+        await self.db.commit()
         return page.id
     
     async def add_range_async(self, pages: List[PrototypePage]) -> bool:
@@ -372,6 +380,7 @@ class PrototypePageRepository:
             self.db.add(page)
         
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def update_async(self, page: PrototypePage) -> bool:
@@ -386,6 +395,7 @@ class PrototypePageRepository:
         """
         page.last_modify_date = datetime.datetime.now()
         await self.db.merge(page)
+        await self.db.commit()
         return True
     
     async def update_content_async(self, id: int, content: str) -> bool:
@@ -409,6 +419,7 @@ class PrototypePageRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_status_async(self, id: int, status: PrototypePageStatus, error_message: Optional[str] = None) -> bool:
@@ -436,6 +447,7 @@ class PrototypePageRepository:
             .values(**values)
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_async(self, id: int) -> bool:
@@ -450,6 +462,7 @@ class PrototypePageRepository:
         """
         stmt = delete(PrototypePage).where(PrototypePage.id == id)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_by_session_id_async(self, session_id: int) -> bool:
@@ -464,6 +477,7 @@ class PrototypePageRepository:
         """
         stmt = delete(PrototypePage).where(PrototypePage.session_id == session_id)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def update_partial_content_async(self, page_id: int, partial_html: str) -> bool:
@@ -486,6 +500,7 @@ class PrototypePageRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def mark_page_as_complete_async(self, page_id: int) -> bool:
@@ -507,6 +522,7 @@ class PrototypePageRepository:
             )
         )
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
 
 
@@ -585,6 +601,7 @@ class PrototypePageHistoryRepository:
         history.create_date = datetime.datetime.now()
         self.db.add(history)
         await self.db.flush()
+        await self.db.commit()
         return history.id
     
     async def delete_by_page_id_async(self, page_id: int) -> bool:
@@ -599,6 +616,7 @@ class PrototypePageHistoryRepository:
         """
         stmt = delete(PrototypePageHistory).where(PrototypePageHistory.page_id == page_id)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return True  # 即使没有历史版本记录也返回True
 
 
@@ -704,6 +722,7 @@ class PrototypeMessageRepository:
         message.create_date = datetime.datetime.now()
         self.db.add(message)
         await self.db.flush()
+        await self.db.commit()
         return message.id
     
     async def add_range_async(self, messages: List[PrototypeMessage]) -> bool:
@@ -723,6 +742,7 @@ class PrototypeMessageRepository:
             self.db.add(message)
         
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def delete_async(self, id: int) -> bool:
@@ -737,6 +757,7 @@ class PrototypeMessageRepository:
         """
         stmt = delete(PrototypeMessage).where(PrototypeMessage.id == id)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
 
 
@@ -836,6 +857,7 @@ class PrototypeResourceRepository:
         resource.create_date = datetime.datetime.now()
         self.db.add(resource)
         await self.db.flush()
+        await self.db.commit()
         return resource.id
     
     async def add_range_async(self, resources: List[PrototypeResource]) -> bool:
@@ -855,6 +877,7 @@ class PrototypeResourceRepository:
             self.db.add(resource)
         
         await self.db.flush()
+        await self.db.commit()
         return True
     
     async def update_async(self, resource: PrototypeResource) -> bool:
@@ -868,6 +891,7 @@ class PrototypeResourceRepository:
             操作结果
         """
         await self.db.merge(resource)
+        await self.db.commit()
         return True
     
     async def delete_async(self, id: int) -> bool:
@@ -882,6 +906,7 @@ class PrototypeResourceRepository:
         """
         stmt = delete(PrototypeResource).where(PrototypeResource.id == id)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.rowcount > 0
     
     async def delete_by_session_id_async(self, session_id: int) -> bool:
@@ -896,4 +921,5 @@ class PrototypeResourceRepository:
         """
         stmt = delete(PrototypeResource).where(PrototypeResource.session_id == session_id)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return True  # 即使没有资源也返回True

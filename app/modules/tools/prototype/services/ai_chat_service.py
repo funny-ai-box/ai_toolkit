@@ -541,7 +541,7 @@ class AIChatService:
         }
         
         if stage in status_mapping:
-            return await self.session_repository.update_status_async(session_id, status_mapping[stage])
+            return await self.session_repository.update_status_async(session_id,int( status_mapping[stage]))
         
         return False
     
