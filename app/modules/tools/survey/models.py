@@ -69,7 +69,7 @@ class SurveyDesignHistory(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False, name="Id", comment="主键ID（雪花算法）")
     task_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("survey_task.Id"), nullable=False, name="TaskId", comment="任务ID")
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, name="UserId", comment="用户ID")
-    role: Mapped[str] = mapped_column(String(20), nullable=False, name="Role", comment="消息角色（用户/AI）")
+    role: Mapped[int] = mapped_column(String(20), nullable=False, name="Role", comment="消息角色（用户/AI）")
     content: Mapped[Optional[str]] = mapped_column(Text, nullable=True, name="Content", comment="消息内容")
     complete_json_config: Mapped[Optional[str]] = mapped_column(Text, nullable=True, name="CompleteJsonConfig", comment="完整JSON配置")
     create_date: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, name="CreateDate", comment="创建时间")

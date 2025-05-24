@@ -6,7 +6,7 @@ import logging
 
 from app.core.ai.chat.base import IChatAIService
 from app.core.ai.chat.factory import get_chat_ai_service
-from app.core.ai.dtos import ChatRoleType
+from app.core.ai.dtos import ChatRoleType, InputMessage
 
 from app.modules.base.prompts.services import PromptTemplateService
 from app.modules.tools.survey.repositories import SurveyDesignHistoryRepository
@@ -45,29 +45,17 @@ class AIDesignService:
         self.contains_json_regex = re.compile(r"```json|<json>", re.IGNORECASE)
 
     async def ai_design_fields_async(
-        self,
-        user_id: int,
-        task: SurveyTask,
-        user_message: str,
-        on_chunk_received: Callable[[str], None],
-        tabs: Optional[List[SurveyTab]] = None,
-        fields: Optional[List[SurveyField]] = None,
-        cancellation_token = None
-    ) -> AIDesignResponseDto:
+    self,
+    user_id: int,
+    task: SurveyTask,
+    user_message: str,
+    on_chunk_received: Callable[[str], None],
+    tabs: Optional[List[SurveyTab]] = None,
+    fields: Optional[List[SurveyField]] = None,
+    cancellation_token = None
+) -> AIDesignResponseDto:
         """
         流式AI设计问卷字段
-        
-        Args:
-            user_id: 用户ID
-            task: 问卷任务对象
-            user_message: 用户消息
-            on_chunk_received: 接收到数据块时的回调函数
-            tabs: 已存在的Tab页列表（可选）
-            fields: 已存在的字段列表（可选）
-            cancellation_token: 取消令牌
-            
-        Returns:
-            设计响应
         """
         try:
             # 构建智能聊天上下文
@@ -87,7 +75,7 @@ class AIDesignService:
             # 合并所有响应块
             ai_response = ''.join(complete_response)
 
-            # 保存用户消息到历史
+            # 保存用户消息到历史 - Fix: Use enum value
             user_history_id = await self.save_design_history_message(
                 user_id, task.id, ChatRoleType.USER, user_message
             )
@@ -106,7 +94,7 @@ class AIDesignService:
                         indent=2
                     )
 
-                # 保存AI回复到历史
+                # 保存AI回复到历史 - Fix: Use enum value
                 ai_history_id = await self.save_design_history_message(
                     user_id, task.id, ChatRoleType.ASSISTANT, text_response, json_config
                 )
@@ -116,7 +104,7 @@ class AIDesignService:
                     tabs=tabs_design
                 )
             else:
-                # 保存AI回复到历史
+                # 保存AI回复到历史 - Fix: Use enum value
                 ai_history_id = await self.save_design_history_message(
                     user_id, task.id, ChatRoleType.ASSISTANT, ai_response
                 )
@@ -182,12 +170,12 @@ class AIDesignService:
             return ai_response, []
 
     async def build_smart_chat_messages_async(
-        self,
-        task: SurveyTask,
-        user_message: str,
-        tabs: Optional[List[SurveyTab]] = None,
-        fields: Optional[List[SurveyField]] = None
-    ) -> List[Dict[str, Any]]:
+    self,
+    task: SurveyTask,
+    user_message: str,
+    tabs: Optional[List[SurveyTab]] = None,
+    fields: Optional[List[SurveyField]] = None
+) -> List[InputMessage]:  # Changed return type
         """
         构建智能聊天上下文
         
@@ -198,14 +186,19 @@ class AIDesignService:
             fields: 已存在的字段列表（可选）
             
         Returns:
-            聊天消息列表
+            InputMessage对象列表
         """
+        from app.core.ai.dtos import InputMessage, InputTextContent  # Import here to avoid circular imports
+        
         messages = []
         
         # 准备系统提示词
         system_prompt = await self.prompt_template_service.get_content_by_key_async("SURVEY_DESIGN_PROMPT")
         if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
+            messages.append(InputMessage(
+                role=ChatRoleType.SYSTEM,
+                content=[InputTextContent(text=system_prompt)]
+            ))
         
         # 构建当前问卷配置
         current_config_json = await self.get_current_actual_config_async(task.id, tabs, fields)
@@ -214,11 +207,17 @@ class AIDesignService:
             # 修改的提示词
             system_edit_prompt = await self.prompt_template_service.get_content_by_key_async("SURVEY_DESIGN_EDIT_PROMPT")
             if system_edit_prompt:
-                messages.append({"role": "system", "content": system_edit_prompt})
+                messages.append(InputMessage(
+                    role=ChatRoleType.SYSTEM,
+                    content=[InputTextContent(text=system_edit_prompt)]
+                ))
             
             # 存在当前配置，将其添加到系统提示中
             now_config = f"\n\n当前问卷配置如下:\n```json\n{current_config_json}\n```\n\n"
-            messages.append({"role": "system", "content": now_config})
+            messages.append(InputMessage(
+                role=ChatRoleType.SYSTEM,
+                content=[InputTextContent(text=now_config)]
+            ))
             
             # 找到包含最新JSON配置的历史记录（用于确定时间点）
             json_config_history = await self.design_history_repository.get_latest_complete_json_config_async(task.id)
@@ -236,15 +235,28 @@ class AIDesignService:
                 
                 recent_history = [h for h in all_history if h.id > json_history_id]
                 for history in sorted(recent_history, key=lambda x: x.create_date):
-                    if history.role == ChatRoleType.USER:
-                        messages.append({"role": "user", "content": history.content})
-                    elif history.role == ChatRoleType.ASSISTANT:
-                        messages.append({"role": "assistant", "content": history.content})
+                    print("----------------------------")
+                    print(history)
+                    print("----------------------------")
+                    # Convert to InputMessage objects
+                    if history.role == ChatRoleType.USER.value:
+                        messages.append(InputMessage(
+                            role=ChatRoleType.USER,
+                            content=[InputTextContent(text=history.content)]
+                        ))
+                    elif history.role == ChatRoleType.ASSISTANT.value:
+                        messages.append(InputMessage(
+                            role=ChatRoleType.ASSISTANT,
+                            content=[InputTextContent(text=history.content)]
+                        ))
         else:
             # 没有现有配置，添加标准对话流程指南
             system_new_prompt = await self.prompt_template_service.get_content_by_key_async("SURVEY_DESIGN_NEW_PROMPT")
             if system_new_prompt:
-                messages.append({"role": "system", "content": system_new_prompt})
+                messages.append(InputMessage(
+                    role=ChatRoleType.SYSTEM,
+                    content=[InputTextContent(text=system_new_prompt)]
+                ))
             
             # 没有历史JSON配置，获取最近的对话历史
             recent_history = await self.design_history_repository.get_recent_history_async(
@@ -252,13 +264,26 @@ class AIDesignService:
             )
             
             for history in recent_history:
-                if history.role == ChatRoleType.USER:
-                    messages.append({"role": "user", "content": history.content})
-                elif history.role == ChatRoleType.ASSISTANT:
-                    messages.append({"role": "assistant", "content": history.content})
+                print("----------------------------")
+                print(history)
+                print("----------------------------")
+                # Convert to InputMessage objects
+                if history.role == ChatRoleType.USER.value:
+                    messages.append(InputMessage(
+                        role=ChatRoleType.USER,
+                        content=[InputTextContent(text=history.content)]
+                    ))
+                elif history.role == ChatRoleType.ASSISTANT.value:
+                    messages.append(InputMessage(
+                        role=ChatRoleType.ASSISTANT,
+                        content=[InputTextContent(text=history.content)]
+                    ))
         
         # 添加当前用户消息
-        messages.append({"role": "user", "content": user_message})
+        messages.append(InputMessage(
+            role=ChatRoleType.USER,
+            content=[InputTextContent(text=user_message)]
+        ))
         
         return messages
 
@@ -333,13 +358,13 @@ class AIDesignService:
             return None
 
     async def save_design_history_message(
-        self,
-        user_id: int,
-        task_id: int,
-        role: ChatRoleType,
-        content: str,
-        json_config: Optional[str] = None
-    ) -> int:
+    self,
+    user_id: int,
+    task_id: int,
+    role: ChatRoleType,
+    content: str,
+    json_config: Optional[str] = None
+) -> int:
         """
         保存设计历史消息
         
@@ -356,7 +381,7 @@ class AIDesignService:
         history = SurveyDesignHistory(
             user_id=user_id,
             task_id=task_id,
-            role=role,
+            role=role.value,  # Convert enum to string value
             content=content,
             complete_json_config=json_config
         )

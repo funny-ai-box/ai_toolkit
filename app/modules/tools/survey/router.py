@@ -1,5 +1,6 @@
 import logging
 from typing import List, Optional, Union, Any
+from urllib import response
 from fastapi import APIRouter, Depends, Body, Query, status, Response, Request
 from fastapi.responses import StreamingResponse
 import asyncio
@@ -328,40 +329,85 @@ async def ai_design_streaming(
     """
     async def event_generator():
         # 创建事件ID
-        event_id = "survey_design_" + str(request.task_id)
+        event_id = f"survey_design_{request.task_id}"
         
         try:
             # 发送开始事件
             start_message = json.dumps({"message": "开始生成设计"})
             yield f"id: {event_id}\nevent: start\ndata: {start_message}\n\n"
             
-            # 收集响应块
-            chunks = []
+            # 创建一个队列来处理流式数据
+            import asyncio
+            chunk_queue = asyncio.Queue()
+            response_complete = asyncio.Event()
+            final_response = None
             
-            # 定义回调函数
+            # 定义回调函数来处理块
             def on_chunk_received(chunk):
-                # 记录响应块
-                chunks.append(chunk)
-                # 注意：SSE事件数据中不能有换行，需要进行处理
-                escaped_chunk = chunk.replace("\n", "\\n").replace("\r", "\\r")
-                return f"id: {event_id}\nevent: chunk\ndata: {escaped_chunk}\n\n"
+                # 将块放入队列
+                asyncio.create_task(chunk_queue.put(chunk))
             
-            # # 调用流式设计API
-            # response = await design_service.streaming_ai_design_fields_async(
-            #     user_id=user_id,
-            #     request=request,
-            #     on_chunk_received=lambda chunk: yield(on_chunk_received(chunk)),
-            #     cancellation_token=None
-            # )
+            # 启动AI设计任务
+            async def ai_task():
+                nonlocal final_response
+                try:
+                    final_response = await design_service.streaming_ai_design_fields_async(
+                        user_id=user_id,
+                        request=request,
+                        on_chunk_received=on_chunk_received,
+                        cancellation_token=None
+                    )
+                finally:
+                    # 标记任务完成
+                    response_complete.set()
+                    # 发送结束标记
+                    await chunk_queue.put(None)
+            
+            # 启动AI任务
+            ai_task_handle = asyncio.create_task(ai_task())
+            
+            # 处理流式数据
+            while True:
+                try:
+                    # 等待下一个块或超时
+                    chunk = await asyncio.wait_for(chunk_queue.get(), timeout=1.0)
+                    
+                    if chunk is None:  # 结束标记
+                        break
+                        
+                    # 发送块数据
+                    escaped_chunk = chunk.replace("\n", "\\n").replace("\r", "\\r")
+                    chunk_data = json.dumps({"chunk": escaped_chunk})
+                    yield f"id: {event_id}\nevent: chunk\ndata: {chunk_data}\n\n"
+                    
+                except asyncio.TimeoutError:
+                    # 超时，发送心跳
+                    if not response_complete.is_set():
+                        heartbeat_data = json.dumps({"heartbeat": True})
+                        yield f"id: {event_id}\nevent: heartbeat\ndata: {heartbeat_data}\n\n"
+                    else:
+                        break
+            
+            # 等待AI任务完成
+            await ai_task_handle
+            
+            # 发送最终响应
+            final_data = json.dumps({
+                "message": response.message,
+                "tabs": [tab.model_dump() for tab in response.tabs] if response.tabs else []
+            })
+            yield f"id: {event_id}\nevent: complete\ndata: {final_data}\n\n"
             
         except asyncio.CancelledError:
             # 用户取消请求
-            yield f"id: {event_id}\nevent: canceled\ndata: 请求已取消\n\n"
+            cancel_data = json.dumps({"message": "请求已取消"})
+            yield f"id: {event_id}\nevent: canceled\ndata: {cancel_data}\n\n"
         except Exception as ex:
             # 发送错误事件
             error_message = str(ex)
             logger.error(f"AI设计问卷失败: {error_message}")
-            yield f"id: {event_id}\nevent: error\ndata: {error_message}\n\n"
+            error_data = json.dumps({"error": error_message})
+            yield f"id: {event_id}\nevent: error\ndata: {error_data}\n\n"
         finally:
             # 发送结束事件
             yield f"id: {event_id}\nevent: end\ndata: \n\n"
@@ -373,9 +419,9 @@ async def ai_design_streaming(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # 禁用nginx缓冲
         }
     )
-
 
 @router.post("/design/history", response_model=ApiResponse[PagedResultDto[DesignHistoryMessageDto]])
 async def get_design_history(
