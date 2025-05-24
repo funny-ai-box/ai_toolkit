@@ -307,8 +307,6 @@ async def get_task_by_share_code(
 #
 # 问卷设计API
 #
-
-@router.post("/design/ai/stream")
 @router.post("/design/ai/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
 async def ai_design_streaming(
     request: AIDesignRequestDto = Body(...),

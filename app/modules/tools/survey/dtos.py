@@ -4,8 +4,17 @@ from pydantic import BaseModel, Field, ConfigDict, validator
 from app.core.dtos import BasePageRequestDto, PagedResultDto
 from app.modules.tools.survey.enums import ChatRoleType
 
-# 基础配置，使用 camelCase 作为 JSON 字段名
-model_config = ConfigDict(alias_generator=lambda s: ''.join([s[0].lower(), *[c if c.islower() else f'{c}' for c in s[1:]]]), populate_by_name=True)
+# 修复的alias_generator函数
+def to_camel_case(snake_str: str) -> str:
+    """将snake_case转换为camelCase"""
+    components = snake_str.split('_')
+    return components[0] + ''.join(word.capitalize() for word in components[1:])
+
+# 基础配置，使用正确的 camelCase 转换
+model_config = ConfigDict(
+    alias_generator=to_camel_case, 
+    populate_by_name=True
+)
 
 
 class OptionDto(BaseModel):
