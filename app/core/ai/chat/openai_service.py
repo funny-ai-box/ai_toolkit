@@ -1,40 +1,37 @@
-# app/core/ai/chat/openai_service.py
+# app/core/ai/chat/openai_service.py - 修复角色转换
 import logging
 import httpx
-from typing import List, Dict, Any, AsyncGenerator, cast, Optional
+from typing import List, Dict, Any, AsyncGenerator, Optional
 
-from openai import AsyncOpenAI, OpenAIError # 使用异步客户端
+from openai import AsyncOpenAI, OpenAIError
 from openai.types.chat import ChatCompletionChunk
 from openai.types.chat.chat_completion import ChatCompletion
 
 from app.core.config.settings import settings
 from app.core.ai.chat.base import IChatAIService
-from app.core.ai.dtos import ChatAIUploadFileDto, InputMessage, ChatRoleType, InputContentType, InputTextContent, InputImageContent, InputImageSourceType
-from app.core.exceptions import BusinessException, NotFoundException # 使用自定义异常
+from app.core.ai.dtos import (
+    ChatAIUploadFileDto, InputMessage, ChatRoleType, 
+    InputContentType, InputTextContent, InputImageContent, InputImageSourceType
+)
+from app.core.exceptions import BusinessException, NotFoundException
 
 logger = logging.getLogger(__name__)
 
 class OpenAIService(IChatAIService):
-    """
-    使用 OpenAI API 的聊天服务实现。
-    """
-    def __init__(self, http_client: Optional[httpx.AsyncClient] = None): # <--- 接收可选的 client
+    """使用 OpenAI API 的聊天服务实现"""
+    
+    def __init__(self, http_client: Optional[httpx.AsyncClient] = None):
         """初始化 OpenAI 异步客户端"""
         if not settings.OPENAI_API_KEY:
             raise ValueError("OpenAI API Key 未在配置中设置。")
 
         try:
-            # 配置异步客户端
-            # 可以添加 base_url, http_client (例如使用 httpx 并配置代理) 等参数
-            # http_client = httpx.AsyncClient(proxies=...) # 如果需要代理            
-            # --- 使用传入的 http_client (如果提供) ---
-            effective_http_client = http_client if http_client else httpx.AsyncClient(timeout=180.0) # 否则创建默认的
+            effective_http_client = http_client if http_client else httpx.AsyncClient(timeout=180.0)
 
             self.client = AsyncOpenAI(
                 api_key=settings.OPENAI_API_KEY,
-                # organization=settings.OPENAI_ORGANIZATION, # 如果有组织 ID
-                timeout=None, # 超时由 httpx client 控制
-                http_client=effective_http_client # 如果配置了带代理的 httpx 客户端
+                timeout=None,
+                http_client=effective_http_client
             )
             self.embedding_model = settings.OPENAI_EMBEDDING_MODEL
             self.chat_model = settings.OPENAI_CHAT_MODEL
@@ -47,15 +44,14 @@ class OpenAIService(IChatAIService):
 
     def _convert_input_to_openai_message(self, message: InputMessage) -> Dict[str, Any]:
         """将内部 InputMessage 转换为 OpenAI API 需要的格式"""
-        openai_role = message.role.value # 直接使用枚举值 "system", "user", "assistant"
+        # 使用 openai_role 属性获取字符串角色
+        openai_role = message.role.openai_role
 
-        # 处理 content (可能是文本，也可能是包含文本和图片的列表)
-        openai_content: Any = "" # 默认是字符串
+        # 处理 content
+        openai_content: Any = ""
         if len(message.content) == 1 and isinstance(message.content[0], InputTextContent):
-            # 如果只有一个文本块，content 就是字符串
             openai_content = message.content[0].text
         else:
-            # 如果有多个块，或者包含图片，content 是一个列表
             openai_content_parts = []
             for part in message.content:
                 if isinstance(part, InputTextContent):
@@ -65,11 +61,9 @@ class OpenAIService(IChatAIService):
                     if part.source.type == InputImageSourceType.URL:
                         image_part["image_url"] = {
                             "url": part.source.url,
-                            # OpenAI 支持 detail: low, high, auto
-                            "detail": "low" # 使用低分辨率以节省 token
+                            "detail": "low"
                         }
                     elif part.source.type == InputImageSourceType.BASE64:
-                        # OpenAI 需要 base64 URL 格式: data:{media_type};base64,{data}
                         base64_url = f"data:{part.source.media_type};base64,{part.source.data}"
                         image_part["image_url"] = {
                             "url": base64_url,
@@ -77,7 +71,7 @@ class OpenAIService(IChatAIService):
                         }
                     else:
                          logger.warning(f"不支持的图片源类型: {part.source.type}")
-                         continue # 跳过无效的图片类型
+                         continue
                     openai_content_parts.append(image_part)
             openai_content = openai_content_parts
 
@@ -93,12 +87,10 @@ class OpenAIService(IChatAIService):
             response = await self.client.embeddings.create(
                 model=self.embedding_model,
                 input=text,
-                dimensions=self.dimension # 指定维度
+                dimensions=self.dimension
             )
-            # 检查返回的数据结构
             if response.data and len(response.data) > 0:
                 embedding = response.data[0].embedding
-                # 确保返回的是 list[float]
                 return list(embedding) if embedding else []
             else:
                  logger.error("OpenAI embedding API 返回了空数据。")
@@ -115,16 +107,12 @@ class OpenAIService(IChatAIService):
         if not texts:
             return []
         try:
-            # OpenAI API 接受字符串列表作为输入
             response = await self.client.embeddings.create(
                 model=self.embedding_model,
                 input=texts,
                 dimensions=self.dimension
             )
-            # 确保返回的嵌入列表与输入文本列表顺序一致
-            # response.data 是 Embedding 对象的列表，按输入顺序排列
             embeddings = [item.embedding for item in response.data if item.embedding]
-            # 确保是 list[float]
             return [list(emb) for emb in embeddings]
         except OpenAIError as e:
             logger.error(f"OpenAI API 批量嵌入请求失败: {e}")
@@ -135,20 +123,8 @@ class OpenAIService(IChatAIService):
 
     async def upload_file_async(self, file_path: str) -> ChatAIUploadFileDto:
         """OpenAI 的聊天接口不直接支持这种方式的文件上传供 chat 使用"""
-        # 如果将来需要使用 File API，可以在这里实现
         logger.warning("OpenAI Chat Completion API 不支持通过此方法上传文件供直接访问。")
         raise NotImplementedError("OpenAI 服务未实现 UploadFileAsync 功能。请使用 Assistant API 或其他方式处理文件。")
-        # 如果是 Assistant API:
-        # try:
-        #     with open(file_path, "rb") as f:
-        #         openai_file = await self.client.files.create(file=f, purpose='assistants')
-        #     return ChatAIUploadFileDto(
-        #         mimeType=openai_file.mime_type, # 需要确认 OpenAI File 对象是否有 mime_type
-        #         uri=openai_file.id # 使用 OpenAI 返回的文件 ID
-        #     )
-        # except Exception as e:
-        #     logger.error(f"上传文件到 OpenAI 失败: {e}")
-        #     raise BusinessException(f"上传文件失败: {str(e)}") from e
 
     async def chat_completion_async(self, messages: List[InputMessage]) -> str:
         """执行一次完整的聊天补全请求"""
@@ -162,19 +138,16 @@ class OpenAIService(IChatAIService):
                 messages=openai_messages,
                 max_tokens=self.max_tokens,
                 temperature=0.7,
-                # 可以添加其他参数，如 top_p, frequency_penalty, presence_penalty
             )
-            # 检查是否有回复内容
             if completion.choices and completion.choices[0].message:
                 content = completion.choices[0].message.content
                 return content if content else ""
             else:
                 logger.warning("OpenAI chat completion API 返回结果中无有效回复。")
-                return "[模型未返回有效内容]" # 或者返回空字符串或抛出异常
+                return "[模型未返回有效内容]"
 
         except OpenAIError as e:
             logger.error(f"OpenAI API 聊天补全请求失败: {e}")
-            # 可以根据 e.type 或 e.code 区分不同错误类型
             if "context_length_exceeded" in str(e):
                  raise BusinessException("输入内容过长，请减少输入或缩短对话历史。", code=400) from e
             raise BusinessException(f"AI 聊天服务出错: {e.type} - {e.message}") from e
@@ -187,7 +160,7 @@ class OpenAIService(IChatAIService):
     ) -> AsyncGenerator[str, None]:
         """执行流式聊天补全请求"""
         if not messages:
-            yield "" # 如果输入为空，返回一个空生成器
+            yield ""
             return
 
         openai_messages = self._convert_messages_to_openai_format(messages)
@@ -198,21 +171,16 @@ class OpenAIService(IChatAIService):
                 messages=openai_messages,
                 max_tokens=self.max_tokens,
                 temperature=0.7,
-                stream=True, # 开启流式输出
+                stream=True,
             )
             async for chunk in stream:
-                 # 检查流式块中是否有内容更新
                  if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                      content_piece = chunk.choices[0].delta.content
-                     yield content_piece # 产生文本块
+                     yield content_piece
 
         except OpenAIError as e:
             logger.error(f"OpenAI API 流式聊天补全请求失败: {e}")
-            # 在流式接口中，通常不直接抛出异常中断，而是产生一个错误消息
             yield f"[AI Error: {e.type} - {e.message}]"
-            # 或者根据需要抛出异常，让上层处理
-            # raise BusinessException(f"AI 聊天服务出错: {e.type} - {e.message}") from e
         except Exception as e:
             logger.error(f"流式聊天补全时发生未知错误: {e}")
             yield f"[Unknown AI Error: {str(e)}]"
-            # raise BusinessException(f"AI 聊天服务发生未知错误: {str(e)}") from e

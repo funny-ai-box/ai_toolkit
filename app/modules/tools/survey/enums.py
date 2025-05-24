@@ -35,3 +35,5 @@ class ChatRoleType(str, Enum):
     SYSTEM = "system"      # 系统
     USER = "user"          # 用户
     ASSISTANT = "assistant" # AI助手
+
+from app.core.ai.dtos import ChatRoleType
