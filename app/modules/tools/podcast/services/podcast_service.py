@@ -317,7 +317,7 @@ class PodcastService:
                 except Exception as doc_e:
                     logger.warning(f"获取文档失败: {doc_e}")
             
-            result.contentItems = content_dtos
+            result.content_items = content_dtos
             
             return result
         except Exception as e:
