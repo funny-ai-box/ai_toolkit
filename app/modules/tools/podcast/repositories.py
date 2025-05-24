@@ -1,5 +1,5 @@
 """
-播客模块数据库仓储层 - 继续
+播客模块数据库仓储层
 """
 import datetime
 import logging
@@ -21,7 +21,361 @@ from app.modules.tools.podcast.constants import (
 
 logger = logging.getLogger(__name__)
 
-# 继续添加未完成的仓储类方法
+
+class PodcastTaskRepository:
+    """播客任务仓储实现"""
+    
+    def __init__(self, db: AsyncSession):
+        """
+        初始化播客任务仓储
+        
+        Args:
+            db: 数据库会话
+        """
+        self.db = db
+    
+    async def get_by_id_async(self, id: int) -> Optional[PodcastTask]:
+        """
+        获取播客任务
+        
+        Args:
+            id: 播客ID
+        
+        Returns:
+            播客任务实体
+        """
+        query = select(PodcastTask).where(PodcastTask.id == id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+    
+    async def get_by_user_id_async(self, user_id: int) -> List[PodcastTask]:
+        """
+        获取用户的所有播客任务
+        
+        Args:
+            user_id: 用户ID
+        
+        Returns:
+            播客任务实体列表
+        """
+        query = select(PodcastTask)\
+            .where(PodcastTask.user_id == user_id)\
+            .order_by(desc(PodcastTask.create_date))
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+    
+    async def get_paginated_async(
+        self, user_id: int, page_index: int, page_size: int
+    ) -> Tuple[List[PodcastTask], int]:
+        """
+        分页获取用户的播客任务
+        
+        Args:
+            user_id: 用户ID
+            page_index: 页码
+            page_size: 每页大小
+        
+        Returns:
+            (播客任务列表, 总数量)
+        """
+        # 获取总数量
+        count_query = select(func.count(PodcastTask.id))\
+            .where(PodcastTask.user_id == user_id)
+        count_result = await self.db.execute(count_query)
+        total_count = count_result.scalar()
+        
+        # 获取分页数据
+        offset = (page_index - 1) * page_size
+        query = select(PodcastTask)\
+            .where(PodcastTask.user_id == user_id)\
+            .order_by(desc(PodcastTask.create_date))\
+            .offset(offset)\
+            .limit(page_size)
+        result = await self.db.execute(query)
+        items = list(result.scalars().all())
+        
+        return items, total_count
+    
+    async def add_async(self, podcast: PodcastTask) -> int:
+        """
+        新增播客任务
+        
+        Args:
+            podcast: 播客任务实体
+        
+        Returns:
+            播客ID
+        """
+        podcast.id = generate_id()
+        now = datetime.datetime.now()
+        podcast.create_date = now
+        podcast.last_modify_date = now
+        
+        self.db.add(podcast)
+        await self.db.flush()
+        await self.db.commit()
+        return podcast.id
+    
+    async def update_async(self, podcast: PodcastTask) -> bool:
+        """
+        更新播客任务
+        
+        Args:
+            podcast: 播客任务实体
+        
+        Returns:
+            操作结果
+        """
+        podcast.last_modify_date = datetime.datetime.now()
+        await self.db.merge(podcast)
+        await self.db.flush()
+        await self.db.commit()
+        return True
+    
+    async def delete_async(self, id: int) -> bool:
+        """
+        删除播客任务
+        
+        Args:
+            id: 播客ID
+        
+        Returns:
+            操作结果
+        """
+        query = delete(PodcastTask).where(PodcastTask.id == id)
+        result = await self.db.execute(query)
+        await self.db.commit()
+        return result.rowcount > 0
+    
+    async def start_podcast_generate_async(self, podcast_id: int, history_id: int) -> bool:
+        """
+        开始播客生成
+        
+        Args:
+            podcast_id: 播客ID
+            history_id: 历史ID
+        
+        Returns:
+            操作结果
+        """
+        query = update(PodcastTask)\
+            .where(PodcastTask.id == podcast_id)\
+            .values(
+                status=PodcastTaskStatus.PENDING,
+                generate_id=history_id,
+                generate_count=PodcastTask.generate_count + 1,
+                progress_step=0,
+                error_message=None,
+                last_modify_date=datetime.datetime.now()
+            )
+        result = await self.db.execute(query)
+        await self.db.flush()
+        await self.db.commit()
+        return result.rowcount > 0
+    
+    async def lock_processing_status_async(self, podcast_id: int) -> bool:
+        """
+        锁定处理状态
+        
+        Args:
+            podcast_id: 播客ID
+        
+        Returns:
+            操作结果
+        """
+        query = update(PodcastTask)\
+            .where(
+                and_(
+                    PodcastTask.id == podcast_id,
+                    PodcastTask.status == PodcastTaskStatus.PENDING
+                )
+            )\
+            .values(
+                status=PodcastTaskStatus.PROCESSING,
+                last_modify_date=datetime.datetime.now()
+            )
+        result = await self.db.execute(query)
+        await self.db.flush()
+        await self.db.commit()
+        return result.rowcount > 0
+    
+    async def update_status_async(
+        self, podcast_id: int, status: PodcastTaskStatus, error_message: Optional[str] = None
+    ) -> bool:
+        """
+        更新播客状态
+        
+        Args:
+            podcast_id: 播客ID
+            status: 状态
+            error_message: 错误消息
+        
+        Returns:
+            操作结果
+        """
+        query = update(PodcastTask)\
+            .where(PodcastTask.id == podcast_id)\
+            .values(
+                status=status,
+                error_message=error_message,
+                last_modify_date=datetime.datetime.now()
+            )
+        result = await self.db.execute(query)
+        await self.db.flush()
+        await self.db.commit()
+        return result.rowcount > 0
+    
+    async def update_progress_step_async(self, podcast_id: int, progress_step: int) -> bool:
+        """
+        更新播客进度
+        
+        Args:
+            podcast_id: 播客ID
+            progress_step: 进度步骤
+        
+        Returns:
+            操作结果
+        """
+        query = update(PodcastTask)\
+            .where(PodcastTask.id == podcast_id)\
+            .values(
+                progress_step=progress_step,
+                last_modify_date=datetime.datetime.now()
+            )
+        result = await self.db.execute(query)
+        await self.db.flush()
+        await self.db.commit()
+        return result.rowcount > 0
+
+
+class PodcastTaskContentRepository:
+    """播客内容仓储实现"""
+    
+    def __init__(self, db: AsyncSession):
+        """
+        初始化播客内容仓储
+        
+        Args:
+            db: 数据库会话
+        """
+        self.db = db
+    
+    async def get_by_id_async(self, id: int) -> Optional[PodcastTaskContent]:
+        """
+        获取播客内容项
+        
+        Args:
+            id: 内容项ID
+        
+        Returns:
+            内容项实体
+        """
+        query = select(PodcastTaskContent).where(PodcastTaskContent.id == id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+    
+    async def get_by_podcast_id_async(self, podcast_id: int) -> List[PodcastTaskContent]:
+        """
+        获取播客的所有内容项
+        
+        Args:
+            podcast_id: 播客ID
+        
+        Returns:
+            内容项实体列表
+        """
+        query = select(PodcastTaskContent)\
+            .where(PodcastTaskContent.podcast_id == podcast_id)\
+            .order_by(PodcastTaskContent.create_date)
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+    
+    async def get_by_podcast_ids_async(self, podcast_ids: List[int]) -> List[PodcastTaskContent]:
+        """
+        获取多个播客的所有内容项
+        
+        Args:
+            podcast_ids: 播客ID列表
+        
+        Returns:
+            内容项实体列表
+        """
+        if not podcast_ids:
+            return []
+        
+        query = select(PodcastTaskContent)\
+            .where(PodcastTaskContent.podcast_id.in_(podcast_ids))\
+            .order_by(PodcastTaskContent.create_date)
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+    
+    async def add_async(self, content: PodcastTaskContent) -> int:
+        """
+        新增播客内容项
+        
+        Args:
+            content: 内容项实体
+        
+        Returns:
+            内容项ID
+        """
+        content.id = generate_id()
+        now = datetime.datetime.now()
+        content.create_date = now
+        content.last_modify_date = now
+        
+        self.db.add(content)
+        await self.db.flush()
+        await self.db.commit()
+        return content.id
+    
+    async def update_async(self, content: PodcastTaskContent) -> bool:
+        """
+        更新播客内容项
+        
+        Args:
+            content: 内容项实体
+        
+        Returns:
+            操作结果
+        """
+        content.last_modify_date = datetime.datetime.now()
+        await self.db.merge(content)
+        await self.db.flush()
+        await self.db.commit()
+        return True
+    
+    async def delete_async(self, id: int) -> bool:
+        """
+        删除播客内容项
+        
+        Args:
+            id: 内容项ID
+        
+        Returns:
+            操作结果
+        """
+        query = delete(PodcastTaskContent).where(PodcastTaskContent.id == id)
+        result = await self.db.execute(query)
+        await self.db.commit()
+        return result.rowcount > 0
+    
+    async def delete_by_podcast_id_async(self, podcast_id: int) -> bool:
+        """
+        删除播客的所有内容项
+        
+        Args:
+            podcast_id: 播客ID
+        
+        Returns:
+            操作结果
+        """
+        query = delete(PodcastTaskContent).where(PodcastTaskContent.podcast_id == podcast_id)
+        result = await self.db.execute(query)
+        await self.db.commit()
+        return result.rowcount > 0
+
+
 class PodcastTaskScriptRepository:
     """播客脚本仓储实现"""
     

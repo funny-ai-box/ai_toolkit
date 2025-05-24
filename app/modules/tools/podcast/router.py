@@ -24,6 +24,7 @@ from app.core.dtos import DocumentAppType
 from app.core.exceptions import NotFoundException, BusinessException
 
 # 播客模块DTOs
+from app.modules.base.prompts.repositories import PromptTemplateRepository
 from app.modules.tools.podcast.constants import PodcastTaskContentType
 from app.modules.tools.podcast.dtos import (
     CreatePodcastRequestDto, PodcastDetailDto, PodcastListRequestDto, 
@@ -37,8 +38,18 @@ from app.modules.tools.podcast.dtos import (
 from app.modules.base.knowledge.services.document_service import DocumentService
 from app.modules.base.prompts.services import PromptTemplateService
 
+# 导入仓储类
+from app.modules.tools.podcast.repositories import (
+    PodcastScriptHistoryRepository, 
+    PodcastTaskContentRepository, 
+    PodcastTaskRepository, 
+    PodcastTaskScriptRepository, 
+    PodcastVoiceRepository
+)
+
 # 导入类型提示
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from app.core.storage.base import IStorageService
     from app.core.ai.chat.base import IChatAIService
@@ -66,68 +77,76 @@ def _get_podcast_service(
 ) -> 'PodcastService':
     """内部依赖项：创建并返回PodcastService及其内部所有依赖"""
     
-    # 导入内部依赖，避免循环依赖
-    from app.modules.tools.podcast.repositories import (
-        PodcastTaskRepository, PodcastTaskContentRepository, 
-        PodcastTaskScriptRepository, PodcastScriptHistoryRepository,
-        PodcastVoiceRepository
-    )
+    # 延迟导入，避免循环依赖
     from app.modules.tools.podcast.services.podcast_service import PodcastService
     from app.modules.tools.podcast.services.ai_script_service import AIScriptService
     from app.modules.tools.podcast.services.ai_speech_service import AISpeechService
-    from app.modules.base.knowledge.services.document_service import DocumentService
-    from app.modules.base.prompts.services import PromptTemplateService
-    from app.modules.base.prompts.repositories import PromptTemplateRepository
-    from app.core.redis.service import RedisService
-
-    # 创建依赖项
-    podcast_repository = PodcastTaskRepository(db)
-    podcast_content_repository = PodcastTaskContentRepository(db)
-    podcast_script_repository = PodcastTaskScriptRepository(db)
-    script_history_repository = PodcastScriptHistoryRepository(db)
-    voice_repository = PodcastVoiceRepository(db)
     
-    # 获取提示词服务依赖
-    prompt_repo = PromptTemplateRepository(db=db)
-    # 为了避免循环导入，这里我们没有显式地传入 redis_service
-    prompt_service = PromptTemplateService(db=db, repository=prompt_repo, redis_service=None)
-    
-    # 创建AI服务
-    ai_script_service = AIScriptService(ai_service=ai_service, prompt_template_service=prompt_service)
-    ai_speech_service = AISpeechService(db=db, voice_repository=voice_repository, storage_service=storage_service)
-    
-    # 创建文档服务
-    # 由于文档服务有多个依赖，这里简化创建
-    # 在实际实现中需要完整传入文档服务的所有依赖
-    document_service = _get_document_service(db)
-    
-    # 创建播客服务
-    podcast_service = PodcastService(
-        db=db,
-        podcast_repository=podcast_repository,
-        podcast_content_repository=podcast_content_repository,
-        podcast_script_repository=podcast_script_repository,
-        script_history_repository=script_history_repository,
-        document_service=document_service,
-        ai_script_service=ai_script_service,
-        ai_speech_service=ai_speech_service,
-        job_persistence_service=job_persistence_service
-    )
-    
-    return podcast_service
+    try:
+        # 创建依赖项
+        podcast_repository = PodcastTaskRepository(db)
+        podcast_content_repository = PodcastTaskContentRepository(db)
+        podcast_script_repository = PodcastTaskScriptRepository(db)
+        script_history_repository = PodcastScriptHistoryRepository(db)
+        voice_repository = PodcastVoiceRepository(db)
+        
+        # 获取提示词服务依赖
+        prompt_repo = PromptTemplateRepository(db=db)
+        # 为了避免循环导入，这里我们没有显式地传入 redis_service
+        prompt_service = PromptTemplateService(db=db, repository=prompt_repo, redis_service=None)
+        
+        # 验证 ai_service 是否有效
+        if ai_service is None:
+            raise ValueError("AI service is not available")
+        
+        # 创建AI服务
+        ai_script_service = AIScriptService(ai_service=ai_service, prompt_template_service=prompt_service)
+        ai_speech_service = AISpeechService(db=db, voice_repository=voice_repository, storage_service=storage_service)
+        
+        # 创建文档服务
+        document_service = _get_document_service(db)
+        
+        # 创建播客服务
+        podcast_service = PodcastService(
+            db=db,
+            podcast_repository=podcast_repository,
+            podcast_content_repository=podcast_content_repository,
+            podcast_script_repository=podcast_script_repository,
+            script_history_repository=script_history_repository,
+            document_service=document_service,
+            ai_script_service=ai_script_service,
+            ai_speech_service=ai_speech_service,
+            job_persistence_service=job_persistence_service
+        )
+        
+        return podcast_service
+        
+    except Exception as e:
+        logger.error(f"Error creating podcast service: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initialize podcast service: {str(e)}"
+        )
 
 
 def _get_document_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession,
 ) -> DocumentService:
     """
     内部依赖项：获取文档服务
     
     注意：此处简化了文档服务的创建，实际实现中需要传入所有必要的依赖
     """
-    # 由于文档服务依赖复杂，此处仅返回最小化实现
-    # 在实际使用中，应当正确创建并返回完整的文档服务
-    return DocumentService(db=db)
+    try:
+        # 由于文档服务依赖复杂，此处仅返回最小化实现
+        # 在实际使用中，应当正确创建并返回完整的文档服务
+        return DocumentService(db=db)
+    except Exception as e:
+        logger.error(f"Error creating document service: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initialize document service: {str(e)}"
+        )
 
 
 # 播客API端点定义
@@ -157,11 +176,18 @@ async def create_podcast(
     
     *需要有效的登录令牌*
     """
-    podcast_id = await podcast_service.create_podcast_async(user_id, request)
-    return ApiResponse.success(
-        data=BaseIdRequestDto(id=podcast_id),
-        message="播客创建成功"
-    )
+    try:
+        podcast_id = await podcast_service.create_podcast_async(user_id, request)
+        return ApiResponse.success(
+            data=BaseIdRequestDto(id=podcast_id),
+            message="播客创建成功"
+        )
+    except Exception as e:
+        logger.error(f"Error creating podcast: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create podcast: {str(e)}"
+        )
 
 
 @router.post(
@@ -177,7 +203,6 @@ async def upload_document(
     file: UploadFile = File(...),
     id: int = Form(..., description="播客ID"),
     user_id: int = Depends(get_current_active_user_id),
-    document_service: DocumentService = Depends(_get_document_service),
     podcast_service: 'PodcastService' = Depends(_get_podcast_service)
 ):
     """
@@ -188,27 +213,37 @@ async def upload_document(
     
     *需要有效的登录令牌*
     """
-    # 上传文档到文档系统
-    document_id = await document_service.upload_document_async(
-        user_id=user_id,
-        app_type=DocumentAppType.PODCAST,
-        file=file,
-        title="",
-        parent_id=id,
-        need_vectorize=False,
-        need_graph=False
-    )
-    
-    # 添加到播客内容
-    content_id = await podcast_service.add_podcast_content_async(
-        user_id=user_id,
-        podcast_id=id,
-        content_type=PodcastTaskContentType.FILE,  # 文档文件类型
-        source_document_id=document_id,
-        source_content=""
-    )
-    
-    return ApiResponse.success(data=content_id, message="文档上传成功")
+    try:
+        # 获取文档服务
+        document_service = _get_document_service(podcast_service.db)
+        
+        # 上传文档到文档系统
+        document_id = await document_service.upload_document_async(
+            user_id=user_id,
+            app_type=DocumentAppType.PODCAST,
+            file=file,
+            title="",
+            parent_id=id,
+            need_vectorize=False,
+            need_graph=False
+        )
+        
+        # 添加到播客内容
+        content_id = await podcast_service.add_podcast_content_async(
+            user_id=user_id,
+            podcast_id=id,
+            content_type=PodcastTaskContentType.FILE,  # 文档文件类型
+            source_document_id=document_id,
+            source_content=""
+        )
+        
+        return ApiResponse.success(data=content_id, message="文档上传成功")
+    except Exception as e:
+        logger.error(f"Error uploading document: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload document: {str(e)}"
+        )
 
 
 @router.post(
@@ -223,7 +258,6 @@ async def upload_document(
 async def import_web_page(
     request: ImportPodcastUrlRequestDto = Body(...),
     user_id: int = Depends(get_current_active_user_id),
-    document_service: DocumentService = Depends(_get_document_service),
     podcast_service: 'PodcastService' = Depends(_get_podcast_service)
 ):
     """
@@ -234,27 +268,37 @@ async def import_web_page(
     
     *需要有效的登录令牌*
     """
-    # 导入网页到文档系统
-    document_id = await document_service.import_web_page_async(
-        user_id=user_id,
-        app_type=DocumentAppType.PODCAST,
-        url=str(request.url),
-        title="",
-        parent_id=request.id,
-        need_vectorize=False,
-        need_graph=False
-    )
-    
-    # 添加到播客内容
-    content_id = await podcast_service.add_podcast_content_async(
-        user_id=user_id,
-        podcast_id=request.id,
-        content_type=PodcastTaskContentType.URL,  # 网页URL类型
-        source_document_id=document_id,
-        source_content=""
-    )
-    
-    return ApiResponse.success(data=content_id, message="网页导入成功")
+    try:
+        # 获取文档服务
+        document_service = _get_document_service(podcast_service.db)
+        
+        # 导入网页到文档系统
+        document_id = await document_service.import_web_page_async(
+            user_id=user_id,
+            app_type=DocumentAppType.PODCAST,
+            url=str(request.url),
+            title="",
+            parent_id=request.id,
+            need_vectorize=False,
+            need_graph=False
+        )
+        
+        # 添加到播客内容
+        content_id = await podcast_service.add_podcast_content_async(
+            user_id=user_id,
+            podcast_id=request.id,
+            content_type=PodcastTaskContentType.URL,  # 网页URL类型
+            source_document_id=document_id,
+            source_content=""
+        )
+        
+        return ApiResponse.success(data=content_id, message="网页导入成功")
+    except Exception as e:
+        logger.error(f"Error importing web page: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to import web page: {str(e)}"
+        )
 
 
 @router.post(
@@ -279,16 +323,23 @@ async def import_text(
     
     *需要有效的登录令牌*
     """
-    # 添加到播客内容
-    content_id = await podcast_service.add_podcast_content_async(
-        user_id=user_id,
-        podcast_id=request.id,
-        content_type=PodcastTaskContentType.TEXT,  # 文本类型
-        source_document_id=0,
-        source_content=request.text or ""
-    )
-    
-    return ApiResponse.success(data=content_id, message="文本导入成功")
+    try:
+        # 添加到播客内容
+        content_id = await podcast_service.add_podcast_content_async(
+            user_id=user_id,
+            podcast_id=request.id,
+            content_type=PodcastTaskContentType.TEXT,  # 文本类型
+            source_document_id=0,
+            source_content=request.text or ""
+        )
+        
+        return ApiResponse.success(data=content_id, message="文本导入成功")
+    except Exception as e:
+        logger.error(f"Error importing text: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to import text: {str(e)}"
+        )
 
 
 @router.post(
@@ -309,8 +360,15 @@ async def delete_content(
     
     *需要有效的登录令牌*
     """
-    result = await podcast_service.delete_podcast_content_async(user_id, request.id)
-    return ApiResponse.success(message="播客内容删除成功") if result else ApiResponse.fail(message="播客内容删除失败")
+    try:
+        result = await podcast_service.delete_podcast_content_async(user_id, request.id)
+        return ApiResponse.success(message="播客内容删除成功") if result else ApiResponse.fail(message="播客内容删除失败")
+    except Exception as e:
+        logger.error(f"Error deleting content: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete content: {str(e)}"
+        )
 
 
 @router.post(
@@ -331,8 +389,15 @@ async def get_podcast_content_dtl(
     
     *需要有效的登录令牌*
     """
-    content = await podcast_service.get_podcast_content_detail_async(user_id, request.id)
-    return ApiResponse.success(data=content)
+    try:
+        content = await podcast_service.get_podcast_content_detail_async(user_id, request.id)
+        return ApiResponse.success(data=content)
+    except Exception as e:
+        logger.error(f"Error getting content detail: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get content detail: {str(e)}"
+        )
 
 
 @router.post(
@@ -353,8 +418,15 @@ async def get_podcast_detail(
     
     *需要有效的登录令牌*
     """
-    podcast = await podcast_service.get_podcast_async(user_id, request.id)
-    return ApiResponse.success(data=podcast)
+    try:
+        podcast = await podcast_service.get_podcast_async(user_id, request.id)
+        return ApiResponse.success(data=podcast)
+    except Exception as e:
+        logger.error(f"Error getting podcast detail: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get podcast detail: {str(e)}"
+        )
 
 
 @router.post(
@@ -376,8 +448,15 @@ async def get_podcast_list(
     
     *需要有效的登录令牌*
     """
-    podcasts = await podcast_service.get_user_podcasts_async(user_id, request)
-    return ApiResponse.success(data=podcasts)
+    try:
+        podcasts = await podcast_service.get_user_podcasts_async(user_id, request)
+        return ApiResponse.success(data=podcasts)
+    except Exception as e:
+        logger.error(f"Error getting podcast list: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get podcast list: {str(e)}"
+        )
 
 
 @router.post(
@@ -398,8 +477,15 @@ async def delete_podcast(
     
     *需要有效的登录令牌*
     """
-    result = await podcast_service.delete_podcast_async(user_id, request.id)
-    return ApiResponse.success(message="播客删除成功") if result else ApiResponse.fail(message="播客删除失败")
+    try:
+        result = await podcast_service.delete_podcast_async(user_id, request.id)
+        return ApiResponse.success(message="播客删除成功") if result else ApiResponse.fail(message="播客删除失败")
+    except Exception as e:
+        logger.error(f"Error deleting podcast: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete podcast: {str(e)}"
+        )
 
 
 @router.post(
@@ -423,8 +509,15 @@ async def start_podcast_generate(
     
     *需要有效的登录令牌*
     """
-    result = await podcast_service.start_podcast_generate_async(user_id, request.id)
-    return ApiResponse.success(message="播客生成任务已提交，请稍后刷新查看结果") if result else ApiResponse.fail(message="播客生成任务提交失败")
+    try:
+        result = await podcast_service.start_podcast_generate_async(user_id, request.id)
+        return ApiResponse.success(message="播客生成任务已提交，请稍后刷新查看结果") if result else ApiResponse.fail(message="播客生成任务提交失败")
+    except Exception as e:
+        logger.error(f"Error starting podcast generation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start podcast generation: {str(e)}"
+        )
 
 
 @router.post(
@@ -442,8 +535,15 @@ async def get_supported_voices(
     
     *需要有效的登录令牌*
     """
-    voices = await podcast_service.get_supported_voices_async()
-    return ApiResponse.success(data=voices)
+    try:
+        voices = await podcast_service.get_supported_voices_async()
+        return ApiResponse.success(data=voices)
+    except Exception as e:
+        logger.error(f"Error getting supported voices: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get supported voices: {str(e)}"
+        )
 
 
 @router.post(
@@ -464,11 +564,18 @@ async def get_voices_by_locale(
     
     *需要有效的登录令牌*
     """
-    if not request.locale:
-        return ApiResponse.fail(message="语言/地区参数不能为空")
-    
-    voices = await podcast_service.get_voices_by_locale_async(request.locale)
-    return ApiResponse.success(data=voices)
+    try:
+        if not request.locale:
+            return ApiResponse.fail(message="语言/地区参数不能为空")
+        
+        voices = await podcast_service.get_voices_by_locale_async(request.locale)
+        return ApiResponse.success(data=voices)
+    except Exception as e:
+        logger.error(f"Error getting voices by locale: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get voices by locale: {str(e)}"
+        )
 
 
 # 后台任务端点
@@ -493,7 +600,13 @@ async def process_podcast_generate_task(
         job_id: 任务ID
         params_id: 播客ID
     """
-    # 调用服务层处理播客生成
-    await podcast_service.process_podcast_generate(params_id)
-    return ApiResponse.success(message="播客处理成功")
-
+    try:
+        # 调用服务层处理播客生成
+        await podcast_service.process_podcast_generate(params_id)
+        return ApiResponse.success(message="播客处理成功")
+    except Exception as e:
+        logger.error(f"Error processing podcast generate task: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process podcast generate task: {str(e)}"
+        )

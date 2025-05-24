@@ -3,7 +3,7 @@
 """
 import datetime
 from typing import List, Optional, Union
-from pydantic import BaseModel, Field, HttpUrl, validator, StringConstraints, conint
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 from app.core.dtos import ApiResponse, PagedResultDto, BaseIdRequestDto
 from app.modules.tools.podcast.constants import (
@@ -42,6 +42,7 @@ class CreatePodcastRequestDto(BaseModel):
     )
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "title": "AI科技前沿探讨",
@@ -104,6 +105,7 @@ class PodcastListRequestDto(BaseModel):
     )
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "pageIndex": 1,
@@ -136,6 +138,7 @@ class TtsVoiceDefinition(BaseModel):
     description: Optional[str] = None
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "id": 123456789,
@@ -163,6 +166,7 @@ class PodcastContentItemDto(BaseModel):
     create_date: datetime.datetime = Field(alias="createDate")
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "id": 123456789,
@@ -197,6 +201,7 @@ class PodcastScriptItemDto(BaseModel):
     audio_status_description: str = Field(alias="audioStatusDescription")
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "id": 123456789,
@@ -216,7 +221,8 @@ class PodcastScriptItemDto(BaseModel):
         }
     }
 
-    @validator("audio_duration", pre=True)
+    @field_validator("audio_duration", mode="before")
+    @classmethod
     def parse_duration(cls, v):
         """解析时长，支持timedelta对象或秒数"""
         if isinstance(v, datetime.timedelta):
@@ -242,6 +248,7 @@ class PodcastDetailDto(BaseModel):
     create_date: datetime.datetime = Field(alias="createDate")
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "id": 123456789,
@@ -280,6 +287,7 @@ class PodcastListItemDto(BaseModel):
     create_date: datetime.datetime = Field(alias="createDate")
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "id": 123456789,
@@ -309,6 +317,7 @@ class PodcastScriptRawItemDto(BaseModel):
     no_ssml_content: Optional[str] = Field(default=None, alias="noSsmlContent")
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
                 "roleType": "host",
