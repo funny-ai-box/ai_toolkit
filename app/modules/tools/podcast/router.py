@@ -10,13 +10,17 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # 核心依赖
+from app.core.ai.vector.base import IUserDocsMilvusService
+from app.core.config.settings import settings
 from app.core.database.session import get_db
 from app.api.dependencies import (
     get_current_active_user_id,
+    get_redis_service_from_state,
     get_storage_service_from_state,
     get_chatai_service_from_state,
     get_job_persistence_service,
-    RateLimiter
+    RateLimiter,
+    get_user_docs_milvus_service_from_state
 )
 from app.core.job.decorators import job_endpoint
 from app.core.dtos import ApiResponse, BaseIdRequestDto, PagedResultDto
@@ -24,6 +28,9 @@ from app.core.dtos import DocumentAppType
 from app.core.exceptions import NotFoundException, BusinessException
 
 # 播客模块DTOs
+from app.core.redis.service import RedisService
+from app.modules.base.knowledge.services.extract_service import DocumentExtractService
+from app.modules.base.knowledge.services.graph_service import KnowledgeGraphService
 from app.modules.base.prompts.repositories import PromptTemplateRepository
 from app.modules.tools.podcast.constants import PodcastTaskContentType
 from app.modules.tools.podcast.dtos import (
@@ -130,23 +137,36 @@ def _get_podcast_service(
 
 
 def _get_document_service(
-    db: AsyncSession,
-) -> DocumentService:
-    """
-    内部依赖项：获取文档服务
+    db: AsyncSession = Depends(get_db),
+    user_docs_milvus_service: 'IUserDocsMilvusService' = Depends(get_user_docs_milvus_service_from_state), # For potential vectorization
+    storage_service: Optional['IStorageService'] = Depends(get_storage_service_from_state),
+    ai_service: 'IChatAIService' = Depends(get_chatai_service_from_state), # For potential vectorization/graphing
+    redis_service: 'RedisService' = Depends(get_redis_service_from_state), # For PromptTemplateService if graph service is used
+    job_persistence_service: 'JobPersistenceService' = Depends(get_job_persistence_service),
+
+) -> 'DocumentService':
+
+
+    prompt_repo = PromptTemplateRepository(db=db)
+    prompt_service = PromptTemplateService(db=db, repository=prompt_repo, redis_service=redis_service)
     
-    注意：此处简化了文档服务的创建，实际实现中需要传入所有必要的依赖
-    """
-    try:
-        # 由于文档服务依赖复杂，此处仅返回最小化实现
-        # 在实际使用中，应当正确创建并返回完整的文档服务
-        return DocumentService(db=db)
-    except Exception as e:
-        logger.error(f"Error creating document service: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to initialize document service: {str(e)}"
-        )
+    extract_service_instance = DocumentExtractService() 
+    graph_service_instance = KnowledgeGraphService(
+        prompt_service=prompt_service,
+        ai_service=ai_service 
+    )
+    # This DocumentService might be used for uploads that could optionally trigger full processing
+    doc_service = DocumentService(
+        db=db,
+        user_docs_milvus_service=user_docs_milvus_service,
+        storage_service=storage_service,
+        extract_service=extract_service_instance,
+        graph_service=graph_service_instance,
+        ai_service=ai_service, # This AI service is for vectorization within DocumentService
+        job_persistence_service=job_persistence_service,
+        settings=settings,
+    )
+    return doc_service
 
 
 # 播客API端点定义
@@ -328,7 +348,7 @@ async def import_text(
         content_id = await podcast_service.add_podcast_content_async(
             user_id=user_id,
             podcast_id=request.id,
-            content_type=PodcastTaskContentType.TEXT,  # 文本类型
+            content_type=int(PodcastTaskContentType.TEXT),  # 文本类型
             source_document_id=0,
             source_content=request.text or ""
         )

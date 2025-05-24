@@ -41,7 +41,7 @@ class PodcastTask(Base):
     guest_count: Mapped[int] = mapped_column(
         Integer, default=1, name="GuestCount", comment="嘉宾数量"
     )
-    status: Mapped[PodcastTaskStatus] = mapped_column(
+    status: Mapped[int] = mapped_column(
         Integer, default=PodcastTaskStatus.INIT, name="Status", 
         comment="处理状态：0-初始化，1-待处理，2-处理中，3-处理完成，4-处理失败"
     )
@@ -164,7 +164,7 @@ class PodcastScriptHistory(Base):
     name: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, name="Name", comment="系统记录的创建名称"
     )
-    status: Mapped[PodcastTaskStatus] = mapped_column(
+    status: Mapped[int] = mapped_column(
         Integer, default=PodcastTaskStatus.PENDING, name="Status", 
         comment="处理状态：0-待处理，1-处理中，2-处理完成，3-处理失败"
     )

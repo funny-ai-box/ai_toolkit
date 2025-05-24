@@ -98,7 +98,7 @@ class PodcastService:
                 scene=request.scene,
                 atmosphere=request.atmosphere,
                 guest_count=request.guest_count,
-                status=PodcastTaskStatus.INIT,
+                status=int(PodcastTaskStatus.INIT),
                 generate_count=0,
                 generate_id=0,
                 progress_step=0

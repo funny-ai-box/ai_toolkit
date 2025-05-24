@@ -37,5 +37,31 @@ class PodcastSettings(BaseModel):
     )
 
 
+# 初始化配置 - 修复方案
+def _get_podcast_config():
+    """获取播客配置"""
+    try:
+        # 方案1: 如果settings有Podcast属性
+        if hasattr(settings, 'Podcast'):
+            podcast_config = settings.Podcast
+            if isinstance(podcast_config, dict):
+                return podcast_config
+            else:
+                # 如果Podcast是对象，转换为字典
+                return podcast_config.__dict__ if hasattr(podcast_config, '__dict__') else {}
+        
+        # 方案2: 如果settings是字典形式的配置
+        elif hasattr(settings, '__dict__'):
+            return getattr(settings, 'Podcast', {})
+        
+        # 方案3: 使用默认配置
+        else:
+            return {}
+            
+    except Exception:
+        # 发生任何错误都使用默认配置
+        return {}
+
+
 # 初始化配置
-podcast_settings = PodcastSettings(**settings.get("Podcast", {}))
+podcast_settings = PodcastSettings(**_get_podcast_config())

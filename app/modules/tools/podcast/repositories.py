@@ -161,7 +161,7 @@ class PodcastTaskRepository:
         query = update(PodcastTask)\
             .where(PodcastTask.id == podcast_id)\
             .values(
-                status=PodcastTaskStatus.PENDING,
+                status=int(PodcastTaskStatus.PENDING),
                 generate_id=history_id,
                 generate_count=PodcastTask.generate_count + 1,
                 progress_step=0,
@@ -187,11 +187,11 @@ class PodcastTaskRepository:
             .where(
                 and_(
                     PodcastTask.id == podcast_id,
-                    PodcastTask.status == PodcastTaskStatus.PENDING
+                    PodcastTask.status ==int( PodcastTaskStatus.PENDING)
                 )
             )\
             .values(
-                status=PodcastTaskStatus.PROCESSING,
+                status=int(PodcastTaskStatus.PROCESSING),
                 last_modify_date=datetime.datetime.now()
             )
         result = await self.db.execute(query)
@@ -628,7 +628,7 @@ class PodcastScriptHistoryRepository:
             id=generate_id(),
             podcast_id=podcast_id,
             name=f"{now.strftime('%Y-%m-%d %H:%M:%S')} 创建播客",
-            status=PodcastTaskStatus.PROCESSING,
+            status=int(PodcastTaskStatus.PROCESSING),
             error_message=None,
             create_date=now,
             last_modify_date=now

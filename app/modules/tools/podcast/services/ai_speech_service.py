@@ -51,7 +51,7 @@ class AISpeechService:
         os.makedirs(self.audio_local_dir, exist_ok=True)
         
         # 初始化语音服务
-        self.speech_service = get_speech_service(self.voice_type)
+        self.speech_service = get_speech_service()
     
     async def text_to_speech_async(
         self, task_id: int, ssml_text: str, plain_text: str, voice_symbol: str
